@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AntigravityAuthSettings } from '../src/client/AntigravityAuthSettings.tsx'
 import { en, zh } from '../src/client/locales.ts'
@@ -38,9 +38,9 @@ function rpcFixture(
   }
 }
 
-class ReceiverBoundSettingsScope<T> implements SettingsScope<T> {
+class ReceiverBoundSettingsScope<T> implements ConfigForm<T> {
   private readonly listeners = new Set<() => void>()
-  private readonly snapshot: SettingsScopeSnapshot<T>
+  private readonly snapshot: ConfigFormSnapshot<T>
 
   constructor(value: T) {
     this.snapshot = {
@@ -54,7 +54,7 @@ class ReceiverBoundSettingsScope<T> implements SettingsScope<T> {
     }
   }
 
-  getSnapshot(): SettingsScopeSnapshot<T> {
+  getSnapshot(): ConfigFormSnapshot<T> {
     return this.snapshot
   }
 
@@ -63,9 +63,9 @@ class ReceiverBoundSettingsScope<T> implements SettingsScope<T> {
     return () => { this.listeners.delete(listener) }
   }
 
-  async mutate(): Promise<void> {}
-  async set(): Promise<void> {}
-  async unset(): Promise<void> {}
+  async mutate(): Promise<boolean> { return true }
+  async set(): Promise<boolean> { return true }
+  async unset(): Promise<boolean> { return true }
 }
 
 afterEach(() => {

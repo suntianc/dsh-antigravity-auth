@@ -80,9 +80,10 @@ function driftingHistory(model: string): Message[] {
   } as unknown as Message
   const toolResult: Message = {
     id: 'result-1' as never,
-    role: 'user',
+    role: 'tool',
     source: { kind: 'tool', callId: toolCallId as never },
-    content: [{ type: 'tool-result', toolCallId: toolCallId as never, content: [{ type: 'text', text: 'a.ts' }] }],
+    toolCallId: toolCallId as never, isError: false,
+    content: [{ type: 'text', text: 'a.ts' }],
   }
   return [user, assistant, toolResult]
 }

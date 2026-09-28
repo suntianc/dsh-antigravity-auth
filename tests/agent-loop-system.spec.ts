@@ -54,7 +54,7 @@ it.each(models)('preserves the durable system prompt through the V3 AgentLoop fo
 it.each(models)('preserves ordered system messages and legacy one-shot instructions for %s', model => {
   const payload = buildAntigravityGeneratePayload({
     provider: ANTIGRAVITY_PROVIDER, model, system: 'one-shot preface',
-    messages: [createSystemMessage('first system instruction', 'test'), createSystemMessage('second system instruction', 'test')],
+    messages: [createSystemMessage('first system instruction'), createSystemMessage('second system instruction')],
   }, credential)
   const body = JSON.stringify(payload)
   expect(body).toContain('one-shot preface')

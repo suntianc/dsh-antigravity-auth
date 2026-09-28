@@ -1,6 +1,7 @@
 /** Dedicated grounded Web Search provider and independently mounted Search row. */
 
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { resolveModelWithTier } from '@cortexkit/antigravity-auth-core'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-settings'
@@ -23,6 +24,7 @@ import {
 import { ANTIGRAVITY_WIRE_ORIGIN } from './wire-identity.ts'
 import { classifyPrivateFailure, type PrivateFailureKind } from './private-failure.ts'
 import { mountCapabilityLifecycle, type CapabilityLifecycle } from './capability-lifecycle.ts'
+import { liveValue, type LiveValue } from './volatile-config.ts'
 
 export const name = 'antigravity-search'
 export const inject = ['web', 'antigravityAuth']
@@ -37,13 +39,17 @@ export interface AntigravitySearchSettings {
   maxResults: number
 }
 
-export interface Config extends AntigravitySearchSettings {}
+export interface Config {
+  enabled: LiveValue<boolean>
+  model: LiveValue<string>
+  maxResults: LiveValue<number>
+}
 
 export const Config: z<Config> = z.object({
-  enabled: z.boolean().default(true),
-  model: z.string().default(ANTIGRAVITY_SEARCH_MODEL),
-  maxResults: z.number().step(1).min(1).max(50).default(10),
-})
+  enabled: z.boolean().default(true).volatile(),
+  model: z.string().default(ANTIGRAVITY_SEARCH_MODEL).volatile(),
+  maxResults: z.number().step(1).min(1).max(50).default(10).volatile(),
+}) as unknown as z<Config>
 
 export interface AntigravitySearchProviderOptions {
   readonly auth: Pick<CredentialCoordinator, 'credential'> | { credential(signal?: AbortSignal): Promise<HostCredential | undefined> }
@@ -135,14 +141,14 @@ export function apply(ctx?: Context, config: Config = { enabled: true, model: AN
   if (ctx === undefined) return
   const candidate = ctx as unknown as { web?: { registerSearchProvider: (value: WebSearchProvider) => () => void }; get?: (name: string) => unknown }
   if (candidate.web === undefined) return
-  let current = (): AntigravitySearchSettings => config
+  const current = (): AntigravitySearchSettings => ({
+    enabled: liveValue(config.enabled), model: liveValue(config.model), maxResults: liveValue(config.maxResults),
+  })
   let lifecycle: CapabilityLifecycle | undefined
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, ANTIGRAVITY_SEARCH_SETTINGS_NAMESPACE, Config, config, {
-      setSource: source => { current = source; lifecycle?.sync() },
-      onChange: () => { lifecycle?.sync() },
-    })
+    settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
   })
+  ctx.on('loader/volatile-update', () => { lifecycle?.sync() })
   const provided = candidate.get?.('antigravityAuth')
   const auth = isAuthService(provided) ? provided : createAntigravityAuthService()
   lifecycle = mountCapabilityLifecycle({

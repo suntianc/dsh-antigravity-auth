@@ -161,6 +161,7 @@ describe('bootstrap lifecycle boundary', () => {
       web: { registerSearchProvider },
       get: vi.fn(() => auth),
       inject: vi.fn(),
+      on: vi.fn(() => vi.fn()),
       effect: vi.fn((setup: () => () => Promise<void>) => { cleanup = setup() }),
     }
 
@@ -194,6 +195,7 @@ describe('bootstrap lifecycle boundary', () => {
       web: { registerSearchProvider },
       get: vi.fn(() => auth),
       inject: vi.fn(),
+      on: vi.fn(() => vi.fn()),
       effect: vi.fn((setup: () => () => Promise<void>) => setup()),
     }
 
@@ -224,6 +226,7 @@ describe('bootstrap lifecycle boundary', () => {
       fs: {},
       get: vi.fn(() => auth),
       inject: vi.fn(),
+      on: vi.fn(() => vi.fn()),
       effect: vi.fn((setup: () => () => Promise<void>) => setup()),
     }
 
@@ -247,6 +250,7 @@ describe('bootstrap lifecycle boundary', () => {
       fs: {},
       get: vi.fn(() => auth),
       inject: vi.fn(),
+      on: vi.fn(() => vi.fn()),
       effect: vi.fn((setup: () => () => Promise<void>) => setup()),
     }
 

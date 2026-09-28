@@ -2,6 +2,7 @@
 
 import { Buffer } from 'node:buffer'
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { resolveModelWithTier } from '@cortexkit/antigravity-auth-core'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-settings'
@@ -34,6 +35,7 @@ import {
 import { ANTIGRAVITY_WIRE_ORIGIN } from './wire-identity.ts'
 import { classifyPrivateFailure, type PrivateFailureKind } from './private-failure.ts'
 import { mountCapabilityLifecycle, registerCapabilitySet, type CapabilityLifecycle } from './capability-lifecycle.ts'
+import { liveValue, type LiveValue } from './volatile-config.ts'
 
 export const name = 'antigravity-image'
 export const inject = ['tools', 'attachments', 'fs', 'antigravityAuth']
@@ -43,13 +45,17 @@ export const ANTIGRAVITY_IMAGE_ENDPOINT = `${ANTIGRAVITY_WIRE_ORIGIN}/v1internal
 export const ANTIGRAVITY_IMAGE_MODEL = 'antigravity-gemini-3.1-flash-image'
 export const ANTIGRAVITY_IMAGE_SETTINGS_NAMESPACE = 'antigravity-image'
 
-export interface Config extends AntigravityImageSettings {}
+export interface Config {
+  readonly enabled: LiveValue<boolean>
+  readonly model: LiveValue<string>
+  readonly n: LiveValue<number>
+}
 
 export const Config: z<Config> = z.object({
-  enabled: z.boolean().default(true),
-  model: z.string().default(ANTIGRAVITY_IMAGE_MODEL),
-  n: z.number().step(1).min(1).max(4).default(1),
-})
+  enabled: z.boolean().default(true).volatile(),
+  model: z.string().default(ANTIGRAVITY_IMAGE_MODEL).volatile(),
+  n: z.number().step(1).min(1).max(4).default(1).volatile(),
+}) as unknown as z<Config>
 
 const MAX_REFERENCES = 5
 const MAX_IMAGES = 4
@@ -346,14 +352,14 @@ export function apply(ctx?: Context, config: Config = { enabled: true, model: AN
     get?: (name: string) => unknown
   }
   if (candidate.tools === undefined || candidate.attachments === undefined || candidate.fs === undefined) return
-  let current = (): AntigravityImageSettings => config
+  const current = (): AntigravityImageSettings => ({
+    enabled: liveValue(config.enabled), model: liveValue(config.model), n: liveValue(config.n),
+  })
   let lifecycle: CapabilityLifecycle | undefined
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, ANTIGRAVITY_IMAGE_SETTINGS_NAMESPACE, Config, config, {
-      setSource: source => { current = source; lifecycle?.sync() },
-      onChange: () => { lifecycle?.sync() },
-    })
+    settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
   })
+  ctx.on('loader/volatile-update', () => { lifecycle?.sync() })
   const provided = candidate.get?.('antigravityAuth')
   const auth = isAuthService(provided) ? provided : createAntigravityAuthService()
   const options: AntigravityImageToolOptions = { auth, attachments: candidate.attachments!, fs: candidate.fs!, settings: () => current() }

@@ -199,12 +199,13 @@ describe('Antigravity LLM adapter', () => {
         { type: 'tool-call', id: bashCallId, name: 'bash', arguments: '{"command":"pwd"}' },
         { type: 'tool-call', id: globCallId, name: 'glob', arguments: '{"pattern":"*/package.json"}' },
       ],
-    } as Message
+    } as unknown as Message
     const result = (id: string, name: string, text: string): Message => ({
       id: `result-${name}` as never,
-      role: 'user',
+      role: 'tool',
       source: { kind: 'tool', callId: id as never },
-      content: [{ type: 'tool-result', toolCallId: id as never, content: [{ type: 'text', text }] }],
+      toolCallId: id as never, isError: false,
+      content: [{ type: 'text', text }],
     })
     const request = vi.fn(async (input: PrivateTransportRequest) => {
       const payload = JSON.parse(String(input.body)) as {
@@ -292,9 +293,10 @@ describe('Antigravity LLM adapter', () => {
     } as unknown as Message
     const toolResult: Message = {
       id: 'result-repairable' as never,
-      role: 'user',
+      role: 'tool',
       source: { kind: 'tool', callId: toolCallId as never },
-      content: [{ type: 'tool-result', toolCallId: toolCallId as never, content: [{ type: 'text', text: '/workspace' }] }],
+      toolCallId: toolCallId as never, isError: false,
+      content: [{ type: 'text', text: '/workspace' }],
     }
     const request = vi.fn(async (input: PrivateTransportRequest) => {
       const payload = JSON.parse(String(input.body)) as {
@@ -325,9 +327,10 @@ describe('Antigravity LLM adapter', () => {
     } as unknown as Message
     const toolResult: Message = {
       id: 'result-truncated' as never,
-      role: 'user',
+      role: 'tool',
       source: { kind: 'tool', callId: toolCallId as never },
-      content: [{ type: 'tool-result', toolCallId: toolCallId as never, content: [{ type: 'text', text: 'hi' }] }],
+      toolCallId: toolCallId as never, isError: false,
+      content: [{ type: 'text', text: 'hi' }],
     }
     const request = vi.fn(async (input: PrivateTransportRequest) => {
       const payload = JSON.parse(String(input.body)) as {
@@ -927,13 +930,14 @@ describe('Antigravity LLM adapter', () => {
         role: 'assistant',
         source: { kind: 'model', provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.7-flash' },
         content: [{ type: 'tool-call', id: toolCallId, name: 'lookup_weather', arguments: '{"city":"Paris"}' }],
-      } as Message,
+      } as unknown as Message,
       {
         id: 'tool-1',
-        role: 'user',
+        role: 'tool',
         source: { kind: 'tool', callId: toolCallId },
-        content: [{ type: 'tool-result', toolCallId, content: [{ type: 'text', text: 'sunny' }] }],
-      } as Message,
+        toolCallId, isError: false,
+        content: [{ type: 'text', text: 'sunny' }],
+      } as unknown as Message,
     ] })
 
     const payload = buildAntigravityGeneratePayload(request, credential('access'))

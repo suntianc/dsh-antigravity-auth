@@ -31,6 +31,7 @@ import type {
   LlmProviderInfo,
   LlmResolvedModelInfo,
   Message,
+  RequestMessage,
   ReplayEnvelope,
   StreamChunk,
   TokenUsage,
@@ -955,7 +956,7 @@ function claudeToolTypeHint(value: unknown): string {
 }
 
 function findMessageReasoningSignature(
-  message: Message,
+  message: RequestMessage,
   replayBlocks: readonly AntigravityReplayBlock[],
 ): string | undefined {
   const fromReplay = replayBlocks.find(b => b.kind === 'reasoning' && b.signature !== undefined)?.signature
@@ -970,9 +971,10 @@ function findMessageReasoningSignature(
   return undefined
 }
 
-function mapMessage(message: Message, model: string, toolNames: Map<string, string>): Record<string, unknown> {
+function mapMessage(message: RequestMessage, model: string, toolNames: Map<string, string>): Record<string, unknown> {
+  if (message.role === 'tool') return mapToolResult(message, model, toolNames)
   const parts: Record<string, unknown>[] = []
-  const replay = compatibleReplayState(message, ANTIGRAVITY_PROVIDER, model, contentKinds(message))
+  const replay = message.role === 'assistant' ? compatibleReplayState(message, ANTIGRAVITY_PROVIDER, model, contentKinds(message)) : undefined
   const replayBlocks = replay?.blocks ?? []
   const messageReasoningSignature = findMessageReasoningSignature(message, replayBlocks)
   const isClaude = antigravityModelFamily(model) === 'claude'
@@ -1006,15 +1008,6 @@ function mapMessage(message: Message, model: string, toolNames: Map<string, stri
         },
         ...(signature === undefined ? {} : { thoughtSignature: signature }),
       })
-    } else if (block.type === 'tool-result') {
-      const callId = requireToolCallId(block.toolCallId)
-      parts.push({
-        functionResponse: {
-          ...(isClaude ? { id: callId } : {}),
-          name: requireToolName(toolNames, callId, isGemini),
-          response: { content: blocksToText(block.content) },
-        },
-      })
     } else if (block.type === 'image') {
       throw new LlmError('Antigravity text requests do not accept unresolved image blocks', 'UNSUPPORTED_MODALITY')
     }
@@ -1026,15 +1019,15 @@ function mapMessage(message: Message, model: string, toolNames: Map<string, stri
 }
 
 async function mapMessageWithAttachments(
-  message: Message,
+  message: RequestMessage,
   model: string,
   toolNames: Map<string, string>,
   attachments: Pick<AttachmentStore, 'readImage'> | undefined,
   signal: AbortSignal | undefined,
 ): Promise<Record<string, unknown>> {
-  if (!message.content.some(block => block.type === 'image')) return mapMessage(message, model, toolNames)
+  if (message.role === 'tool' || !message.content.some(block => block.type === 'image')) return mapMessage(message, model, toolNames)
   if (attachments === undefined) throw new LlmError('Antigravity image input requires the Host AttachmentStore', 'UNSUPPORTED_MODALITY')
-  const replay = compatibleReplayState(message, ANTIGRAVITY_PROVIDER, model, contentKinds(message))
+  const replay = message.role === 'assistant' ? compatibleReplayState(message, ANTIGRAVITY_PROVIDER, model, contentKinds(message)) : undefined
   const replayBlocks = replay?.blocks ?? []
   const messageReasoningSignature = findMessageReasoningSignature(message, replayBlocks)
   const parts: Record<string, unknown>[] = []
@@ -1072,18 +1065,18 @@ async function mapMessageWithAttachments(
         },
         ...(signature === undefined ? {} : { thoughtSignature: signature }),
       })
-    } else if (block.type === 'tool-result') {
-      const callId = requireToolCallId(block.toolCallId)
-      parts.push({
-        functionResponse: {
-          ...(isClaude ? { id: callId } : {}),
-          name: requireToolName(toolNames, callId, isGemini),
-          response: { content: blocksToText(block.content) },
-        },
-      })
     }
   }
   return { role: message.role === 'assistant' ? 'model' : 'user', parts }
+}
+
+function mapToolResult(message: Extract<Message, { role: 'tool' }>, model: string, toolNames: Map<string, string>): Record<string, unknown> {
+  const callId = requireToolCallId(message.toolCallId)
+  const isClaude = antigravityModelFamily(model) === 'claude'
+  const name = requireToolName(toolNames, callId, antigravityModelFamily(model) === 'gemini')
+  return { role: 'user', parts: [{ functionResponse: {
+    ...(isClaude ? { id: callId } : {}), name, response: { content: blocksToText(message.content) },
+  } }] }
 }
 
 function rememberToolName(toolNames: Map<string, string>, callId: unknown, name: string, isGemini: boolean): string {
@@ -1140,7 +1133,7 @@ function requestSessionKey(options: GenerateOptions): string {
   return options.sessionId === undefined ? 'default' : `session:${fnv1a64Signed(String(options.sessionId))}`
 }
 
-function contentKinds(message: Message): Array<'text' | 'reasoning' | 'tool-call'> {
+function contentKinds(message: RequestMessage): Array<'text' | 'reasoning' | 'tool-call'> {
   return message.content.flatMap(block => block.type === 'text' || block.type === 'reasoning' || block.type === 'tool-call' ? [block.type] : [])
 }
 

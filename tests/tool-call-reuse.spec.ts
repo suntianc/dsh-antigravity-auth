@@ -32,9 +32,10 @@ function call(id: string, name: string, model = GEMINI): Message {
 
 function result(id: string, text: string): Message {
   return {
-    id: `result-${text}` as never, role: 'user',
+    id: `result-${text}` as never, role: 'tool',
     source: { kind: 'tool', callId: id as never },
-    content: [{ type: 'tool-result', toolCallId: id as never, content: [{ type: 'text', text }] }],
+    toolCallId: id as never, isError: false,
+    content: [{ type: 'text', text }],
   }
 }
 
@@ -104,8 +105,8 @@ describe('Gemini historical tool call ID reuse (#33)', () => {
         { name: 'edit', response: { content: 'result-1' } },
       ])
       expect(wire.flatMap(part => part.functionCall ? [part.functionCall.id] : [])).toEqual([undefined, undefined])
-      expect(readImage).toHaveBeenCalledTimes(withImages ? 4 : 0)
-      expect(wire.filter(part => part.inlineData !== undefined)).toHaveLength(withImages ? 4 : 0)
+      expect(readImage).toHaveBeenCalledTimes(withImages ? 2 : 0)
+      expect(wire.filter(part => part.inlineData !== undefined)).toHaveLength(withImages ? 2 : 0)
     } finally {
       await ctx.fiber.dispose()
     }

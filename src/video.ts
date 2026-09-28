@@ -2,6 +2,7 @@
 
 import { Buffer } from 'node:buffer'
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { resolveModelWithTier } from '@cortexkit/antigravity-auth-core'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-settings'
@@ -25,6 +26,7 @@ import { admitWorkspaceVideo } from './media-admission.ts'
 import { ANTIGRAVITY_WIRE_ORIGIN } from './wire-identity.ts'
 import { classifyPrivateFailure, type PrivateFailureKind } from './private-failure.ts'
 import { mountCapabilityLifecycle, type CapabilityLifecycle } from './capability-lifecycle.ts'
+import { liveValue, type LiveValue } from './volatile-config.ts'
 
 export const name = 'antigravity-video'
 export const inject = ['tools', 'fs', 'antigravityAuth']
@@ -40,13 +42,17 @@ export interface AntigravityVideoSettings {
   readonly maxBytes?: number
 }
 
-export interface Config extends AntigravityVideoSettings {}
+export interface Config {
+  readonly enabled: LiveValue<boolean>
+  readonly model: LiveValue<string>
+  readonly maxBytes?: LiveValue<number>
+}
 
 export const Config: z<Config> = z.object({
-  enabled: z.boolean().default(true),
-  model: z.string().default(ANTIGRAVITY_VIDEO_MODEL),
-  maxBytes: z.number().step(1).min(1).max(32 * 1024 * 1024).default(32 * 1024 * 1024),
-})
+  enabled: z.boolean().default(true).volatile(),
+  model: z.string().default(ANTIGRAVITY_VIDEO_MODEL).volatile(),
+  maxBytes: z.number().step(1).min(1).max(32 * 1024 * 1024).default(32 * 1024 * 1024).volatile(),
+}) as unknown as z<Config>
 
 export interface AntigravityVideoToolOptions {
   readonly auth: Pick<CredentialCoordinator, 'credential'> | { credential(signal?: AbortSignal): Promise<HostCredential | undefined> }
@@ -152,14 +158,15 @@ export function apply(ctx?: Context, config: Config = { enabled: true, model: AN
     get?: (name: string) => unknown
   }
   if (candidate.tools === undefined || candidate.fs === undefined) return
-  let current = (): AntigravityVideoSettings => config
+  const current = (): AntigravityVideoSettings => ({
+    enabled: liveValue(config.enabled), model: liveValue(config.model),
+    ...(config.maxBytes === undefined ? {} : { maxBytes: liveValue(config.maxBytes) }),
+  })
   let lifecycle: CapabilityLifecycle | undefined
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, ANTIGRAVITY_VIDEO_SETTINGS_NAMESPACE, Config, config, {
-      setSource: source => { current = source; lifecycle?.sync() },
-      onChange: () => { lifecycle?.sync() },
-    })
+    settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
   })
+  ctx.on('loader/volatile-update', () => { lifecycle?.sync() })
   const provided = candidate.get?.('antigravityAuth')
   const auth = isAuthService(provided) ? provided : createAntigravityAuthService()
   lifecycle = mountCapabilityLifecycle({

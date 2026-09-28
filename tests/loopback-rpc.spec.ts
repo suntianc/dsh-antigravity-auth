@@ -31,11 +31,11 @@ describe('alpha.5 loopback RPC guard', () => {
     const guard = createLoopbackRpcGuard('127.0.0.1', delegate)
 
     expect(guard.mode).toBe('enabled')
-    await expect(guard.handler('status', { value: 1 }, signal)).resolves.toEqual({
+    await expect(guard.handler('status', { value: 1 }, signal, {} as never)).resolves.toEqual({
       ok: true,
       value: { value: 1 },
     })
-    expect(delegate).toHaveBeenCalledWith('status', { value: 1 }, signal)
+    expect(delegate).toHaveBeenCalledWith('status', { value: 1 }, signal, {})
   })
 
   it('fails closed when WebServer is absent because carrier ownership is unproven', async () => {
@@ -43,7 +43,7 @@ describe('alpha.5 loopback RPC guard', () => {
     const guard = createLoopbackRpcGuard(undefined, delegate)
 
     expect(guard.mode).toBe('blocked')
-    await expect(guard.handler('status', {}, signal)).resolves.toEqual({
+    await expect(guard.handler('status', {}, signal, {} as never)).resolves.toEqual({
       ok: false,
       error: {
         code: 'loopback-required',
@@ -60,7 +60,7 @@ describe('alpha.5 loopback RPC guard', () => {
 
     expect(guard.mode).toBe('blocked')
     for (const endpoint of ['status', 'models', 'usage', 'acknowledge-risk', 'login', 'cancel', 'logout', 'revoke', 'unknown']) {
-      const result = await guard.handler(endpoint, { callbackUrl: 'forbidden-value' }, signal)
+      const result = await guard.handler(endpoint, { callbackUrl: 'forbidden-value' }, signal, {} as never)
       expect(result).toEqual({
         ok: false,
         error: {

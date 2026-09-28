@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.4-rc.5] - 2026-09-28
+
+- Align the plugin and its dependency graph with DSH `0.2.0-rc.1`, Cordis `4.0.4`, and Schemastery `3.18.4`.
+- Migrate capability controls to Config Forms and volatile settings, forward the Connection RPC operator, and map V4 role `tool` messages to provider history.
+- Verify with the full package gate and artifacts built from the official DSH source tag; real account and private transport flows remain unverified.
+
 ## [0.1.4-rc.4] - 2026-09-25
 
 - Fix #35: cancelling pending concurrent web searches no longer emits an unhandled TLS socket error that terminates the DSH Host. Cancellation errors still return to callers and affected sockets close.

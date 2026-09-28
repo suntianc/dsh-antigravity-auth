@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH compatibility:** `0.1.4-rc.4` targets DSH `0.1.5-rc.1` as its development and minimum supported baseline, with a coherent dependency graph. Keep compatible older plugin releases for older DSH Hosts. See [verification](docs/dsh-source-verification.md).
+> **DSH compatibility:** `0.1.4-rc.5` targets DSH `0.2.0-rc.1` as its minimum and tested development baseline. Use compatible older plugin versions for older DSH Hosts. See [verification](docs/dsh-source-verification.md).
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 English | [中文](README.zh.md)
 
-Release: **v0.1.4-rc.4** (npm tag: `rc`).
+Release: **v0.1.4-rc.5** (npm tag: `rc`).
 
 A self-contained [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity Capability Bundle**. It integrates Antigravity's private OAuth session
@@ -26,6 +26,10 @@ The settings section follows the DSH interface language (English or Chinese), in
 > account-gated Antigravity backend surface is unsupported, revocable, and
 > may be rate-limited or changed without notice. Do not rely on it for
 > production workloads.
+
+## 0.1.4-rc.5: DSH 0.2.0-rc.1 adaptation
+
+This release updates the DSH dependency graph, registers capability controls through Config Forms and volatile settings, forwards the current Connection RPC operator, and maps V4 role `tool` messages into provider history. The account route keeps its Host-side loopback guard. The complete package and tagged-source checks pass; live account and private transport behavior remain unverified.
 
 ## 0.1.4-rc.4: concurrent search cancellation
 
@@ -103,22 +107,22 @@ Multimodal `analyze_video` tool accepts workspace MP4 videos, performing bounded
 
 ## Requirements
 
-- DeepSeek Harness `0.1.5-rc.1` (tested coherent dependency graph).
+- DeepSeek Harness `0.2.0-rc.1` (tested coherent dependency graph).
 - Node.js `^22.19.0` or `>=24.0.0`.
 - `pnpm` available on `PATH` (`11.7.0` is the tested project package manager).
 - A Google account with Antigravity access.
 
 ## Install
 
-Stop `dsh web`, ensure the target Host uses a coherent DSH `0.1.5-rc.1` graph, then install the exact prerelease into the intended profile:
+Stop `dsh web`, ensure the target Host uses a coherent DSH `0.2.0-rc.1` graph, then install this exact prerelease into the intended profile:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.4
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.5
 dsh plugin --profile web list
 ```
 
-Verify the entry, restart `dsh web`, and refresh the browser. This version uses the npm `rc` tag. An install without a version or tag selects `latest`, which does not include this RC1 adaptation. Older DSH Hosts should retain a compatible older plugin release.
+Verify the entry, restart `dsh web`, and refresh the browser. This version uses the npm `rc` tag. An install without a version or tag selects `latest`, which does not include this DSH 0.2 adaptation. Older DSH Hosts should retain a compatible older plugin release.
 
 ## Terminal login command
 
