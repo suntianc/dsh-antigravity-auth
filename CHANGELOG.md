@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- Raise the minimum and exact tested DSH dependency graph to `0.2.0-rc.2`; keep Cordis `4.0.4`, Schemastery `3.18.4`, and Antigravity core `2.2.0`.
+- Preserve the existing credential isolation, V4 tool history, signed replay, and concurrent search cancellation behavior.
+- Update the matching official source verification target and remove obsolete prerelease age exceptions.
+
 ## [0.1.4-rc.5] - 2026-09-28
 
 - Align the plugin and its dependency graph with DSH `0.2.0-rc.1`, Cordis `4.0.4`, and Schemastery `3.18.4`.

@@ -1,6 +1,6 @@
 # dsh-antigravity-auth
 
-> **DSH 兼容性：** `0.1.4-rc.5` 以 DSH `0.2.0-rc.1` 为最低且已测试的开发基线；旧版 DSH 请使用兼容的插件版本。见[验证说明](docs/dsh-source-verification.md)。
+> **DSH 兼容性（当前源码）：** 最低及测试开发基线为 DSH `0.2.0-rc.2`。已发布的 `0.1.4-rc.5` 仍基于 DSH `0.2.0-rc.1`；rc.2 适配尚未发布。见[验证说明](docs/dsh-source-verification.md)。
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
@@ -99,14 +99,16 @@
 - 状态三档配色：充足（>60%，翡翠绿）、预警（30%–60%，警示橙）、紧急（<30%，警示红）。
 - 配备 Shimmer 微光流动轨道、微型 Spinner 与平滑展开动画。
 
-## 环境要求
+## 环境要求（当前源码）
 
-- DeepSeek Harness `0.2.0-rc.1`（统一依赖图；npm 与对应源码制品分别验证）。
+- DeepSeek Harness `0.2.0-rc.2`（统一依赖图；npm 与对应源码制品分别验证）。
 - Node.js `^22.19.0` 或 `>=24.0.0`。
 - `PATH` 中可用 `pnpm`（本项目测试版本为 `11.7.0`）。
 - 具有 Antigravity 权限的 Google 账号。
 
-## 安装
+## 安装（已发布版本）
+
+以下命令安装基于 DSH rc.1 的现有版本，不是尚未发布的 rc.2 源码。
 
 先停止 `dsh web`，确认目标 Host 使用统一的 DSH `0.2.0-rc.1` 依赖图，再将此准确预发布版本安装到目标 profile：
 

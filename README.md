@@ -1,6 +1,6 @@
 # dsh-antigravity-auth
 
-> **DSH compatibility:** `0.1.4-rc.5` targets DSH `0.2.0-rc.1` as its minimum and tested development baseline. Use compatible older plugin versions for older DSH Hosts. See [verification](docs/dsh-source-verification.md).
+> **DSH compatibility (current checkout):** DSH `0.2.0-rc.2` is the minimum and tested development baseline. Published `0.1.4-rc.5` remains on DSH `0.2.0-rc.1`; the rc.2 adaptation is unreleased. See [verification](docs/dsh-source-verification.md).
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
@@ -105,14 +105,16 @@ Multimodal `analyze_video` tool accepts workspace MP4 videos, performing bounded
 - Clear status tiers: Normal (>60%, emerald green), Warning (30%–60%, amber), and Low (<30%, coral red).
 - Elegant loading shimmer tracks and querying spinner animations.
 
-## Requirements
+## Requirements (current checkout)
 
-- DeepSeek Harness `0.2.0-rc.1` (tested coherent dependency graph).
+- DeepSeek Harness `0.2.0-rc.2` (tested coherent dependency graph).
 - Node.js `^22.19.0` or `>=24.0.0`.
 - `pnpm` available on `PATH` (`11.7.0` is the tested project package manager).
 - A Google account with Antigravity access.
 
-## Install
+## Install (published release)
+
+The commands below install the existing rc.1-based release, not the unreleased rc.2 checkout.
 
 Stop `dsh web`, ensure the target Host uses a coherent DSH `0.2.0-rc.1` graph, then install this exact prerelease into the intended profile:
 

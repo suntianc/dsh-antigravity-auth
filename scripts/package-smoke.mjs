@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Verify the private Wire Identity package shape without installing or publishing it. */
-import { DSH_PEER_RANGE, DSH_VERIFY_VERSION, resolvedDshPackages } from './dsh-compatibility.mjs'
+import { DSH_BASELINE, DSH_PEER_RANGE, DSH_VERIFY_VERSION, resolvedDshPackages } from './dsh-compatibility.mjs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
@@ -29,6 +29,15 @@ try {
   if (dshGraph.length === 0 || dshGraph.some(entry => entry.version !== DSH_VERIFY_VERSION)) {
     throw new Error('package smoke: DSH lockfile is not one coherent verified graph')
   }
+  for (const [name, version] of Object.entries(manifest.devDependencies ?? {})) {
+    if (name.startsWith('@deepseek-ai/dsh-') && version !== DSH_BASELINE) {
+      throw new Error(`package smoke: ${name} is not pinned to the exact development baseline`)
+    }
+  }
+  if (manifest.dependencies?.['@cortexkit/antigravity-auth-core'] !== '2.2.0'
+    || manifest.devDependencies?.['@cortexkit/antigravity-auth-core'] !== '2.2.0') {
+    throw new Error('package smoke: Antigravity core changed without a separate audit')
+  }
   const changelog = await readFile(resolve(packageRoot, 'CHANGELOG.md'), 'utf8')
   if (!changelog.includes(`## [${String(manifest.version)}]`)) {
     throw new Error(`package smoke: CHANGELOG.md lacks release ${String(manifest.version)}`)
@@ -48,12 +57,12 @@ try {
   }
   for (const [dependency, range] of Object.entries(manifest.peerDependencies ?? {})) {
     if (dependency.startsWith('@deepseek-ai/dsh-') && range !== DSH_PEER_RANGE) {
-      throw new Error(`package smoke: ${dependency} does not declare both verified DSH prerelease ranges`)
+      throw new Error(`package smoke: ${dependency} does not declare the verified DSH baseline`)
     }
   }
   if (manifest.peerDependencies?.['@deepseek-ai/cordis'] !== '^4.0.4'
     || manifest.peerDependencies?.['@deepseek-ai/schemastery'] !== '^3.18.4') {
-    throw new Error('package smoke: Cordis or Schemastery peer baseline does not match DSH 0.2.0-rc.1')
+    throw new Error('package smoke: Cordis or Schemastery peer baseline does not match DSH 0.2.0-rc.2')
   }
   const patch = await readFile(resolve(packageRoot, 'cordis.patch.yml'), 'utf8')
   for (const row of ['antigravity-auth', 'antigravity-search', 'antigravity-image', 'antigravity-video']) {

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { cp, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
-import { DSH_SOURCE_VERSION } from './dsh-compatibility.mjs'
+import { DSH_SOURCE_COMMIT, DSH_SOURCE_VERSION } from './dsh-compatibility.mjs'
 
 const sourceRoot = resolve(import.meta.dirname, '..')
 const args = process.argv.slice(2).filter(value => value !== '--')
@@ -74,7 +74,7 @@ await writeFile(workspacePath, workspace + '\nautoInstallPeers: true\noverrides:
   + Object.entries(overrides).map(([name, value]) => '  ' + JSON.stringify(name) + ': ' + JSON.stringify(value)).join('\n') + '\n')
 await writeFile(join(stage, 'artifacts.json'), JSON.stringify({
   target: DSH_SOURCE_VERSION,
-  expectedSourceCommit: '4878cdabd87d4041bdaff61d04c966883b9fd07a',
+  expectedSourceCommit: DSH_SOURCE_COMMIT,
   // The build recipe establishes provenance. These checksums identify the supplied bytes.
   packages: receipt,
 }, null, 2) + '\n')
