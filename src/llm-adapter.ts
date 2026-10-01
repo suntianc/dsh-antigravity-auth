@@ -154,14 +154,14 @@ export class AntigravityAdapter extends LlmAdapter {
   }
 
   override providerInfo(provider: string): LlmProviderInfo {
-    if (provider !== ANTIGRAVITY_PROVIDER) throw new LlmError('Unknown Antigravity provider route', 'NO_ADAPTER')
-    return { id: ANTIGRAVITY_PROVIDER, name: 'Google Antigravity' }
+    if (provider !== ANTIGRAVITY_PROVIDER && provider !== 'google') throw new LlmError('Unknown Antigravity provider route', 'NO_ADAPTER')
+    return { id: provider, name: provider === 'google' ? 'Google' : 'Google Antigravity' }
   }
 
-  override providerRetryPolicy(): ReturnType<typeof resolveRetryPolicy> {
+  override providerRetryPolicy(provider: string = ANTIGRAVITY_PROVIDER): ReturnType<typeof resolveRetryPolicy> {
     // Generation dispatch is never retried by this adapter; a normal runtime
     // retry policy must not dispatch the same metered request a second time.
-    return resolveRetryPolicy({ mode: 'normal', maxRetries: 0 }, 'google-antigravity')
+    return resolveRetryPolicy({ mode: 'normal', maxRetries: 0 }, provider)
   }
 
   /** Forget account-bound availability when Gate 0 or the credential is replaced. */
@@ -192,7 +192,7 @@ export class AntigravityAdapter extends LlmAdapter {
 
   override async listModels(provider: string, signal?: AbortSignal): Promise<readonly LlmModelInfo[]> {
     this.providerInfo(provider)
-    const snapshot = this.pinnedTextModelInfos()
+    const snapshot = this.pinnedTextModelInfos(provider)
     let available: ReadonlySet<string>
     try {
       available = await this.readLiveModelIds(signal)
@@ -208,11 +208,11 @@ export class AntigravityAdapter extends LlmAdapter {
     return snapshot.filter(model => available.has(model.id))
   }
 
-  private pinnedTextModelInfos(): readonly LlmModelInfo[] {
+  private pinnedTextModelInfos(provider: string = ANTIGRAVITY_PROVIDER): readonly LlmModelInfo[] {
     return Object.values(this.definitions)
       .filter(definition => !definition.modalities.output.includes('image'))
       .map(definition => ({
-        provider: ANTIGRAVITY_PROVIDER,
+        provider,
         id: definition.id,
         name: cleanModelDisplayName(definition.name),
         inputModalities: definition.modalities.input.filter((item): item is 'text' | 'image' => item === 'text' || item === 'image'),
@@ -230,7 +230,7 @@ export class AntigravityAdapter extends LlmAdapter {
     }
     const reasoning = getModelReasoningEfforts(model)
     return {
-      provider: ANTIGRAVITY_PROVIDER,
+      provider,
       id: definition.id,
       name: cleanModelDisplayName(definition.name),
       inputModalities: definition.modalities.input.filter((item): item is 'text' | 'image' => item === 'text' || item === 'image'),
@@ -241,7 +241,7 @@ export class AntigravityAdapter extends LlmAdapter {
   }
 
   override async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
-    if (options.provider !== ANTIGRAVITY_PROVIDER) {
+    if (options.provider !== ANTIGRAVITY_PROVIDER && options.provider !== 'google') {
       throw new LlmError('The Antigravity adapter received an unknown provider route', 'NO_ADAPTER')
     }
     const signal = options.signal

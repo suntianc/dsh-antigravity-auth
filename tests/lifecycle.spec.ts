@@ -4,7 +4,7 @@ import type { CommandDefinition } from '@deepseek-ai/dsh-commands'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apply as applyAuth } from '../src/index.ts'
 import { apply as applyImage } from '../src/image.ts'
 import { apply as applySearch } from '../src/search.ts'
@@ -14,9 +14,33 @@ import { createFileCapabilityGates } from '../src/capability-gates.ts'
 import type { AntigravityAuthService } from '../src/auth-service.ts'
 
 const originalFetch = globalThis.fetch
+let lifecycleRoot: string | undefined
+let previousDataHome: string | undefined
+let previousLocalAppData: string | undefined
+let previousAppData: string | undefined
 
-afterEach(() => {
+beforeEach(async () => {
+  lifecycleRoot = await mkdtemp(join(tmpdir(), 'dsh-antigravity-lifecycle-env-'))
+  previousDataHome = process.env.XDG_DATA_HOME
+  previousLocalAppData = process.env.LOCALAPPDATA
+  previousAppData = process.env.APPDATA
+  process.env.XDG_DATA_HOME = lifecycleRoot
+  process.env.LOCALAPPDATA = lifecycleRoot
+  process.env.APPDATA = lifecycleRoot
+})
+
+afterEach(async () => {
   globalThis.fetch = originalFetch
+  if (previousDataHome === undefined) delete process.env.XDG_DATA_HOME
+  else process.env.XDG_DATA_HOME = previousDataHome
+  if (previousLocalAppData === undefined) delete process.env.LOCALAPPDATA
+  else process.env.LOCALAPPDATA = previousLocalAppData
+  if (previousAppData === undefined) delete process.env.APPDATA
+  else process.env.APPDATA = previousAppData
+  if (lifecycleRoot !== undefined) {
+    await rm(lifecycleRoot, { recursive: true, force: true })
+    lifecycleRoot = undefined
+  }
 })
 
 function gateStatus(id: 'search' | 'image' | 'video', state: 'available' | 'poc-pending' | 'protocol-drift') {
