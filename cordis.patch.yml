@@ -10,7 +10,3 @@
       name: 'dsh-antigravity-auth/image'
     - id: antigravity-video
       name: 'dsh-antigravity-auth/video'
-- id: web
-  name: '@deepseek-ai/dsh-web'
-  config:
-    searchProvider: antigravity

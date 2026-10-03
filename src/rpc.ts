@@ -18,6 +18,7 @@ export async function handleAntigravityAuthRpc(
   payload: unknown,
   signal?: AbortSignal,
   modelCatalog?: AntigravityModelCatalogService,
+  opener?: (url: string) => boolean | Promise<boolean>,
 ): Promise<RpcResult<unknown>> {
   if (signal?.aborted === true) return cancelled()
 
@@ -48,7 +49,9 @@ export async function handleAntigravityAuthRpc(
     if (endpoint === 'login') {
       if (!isEmptyRecord(payload)) return badRequest('login expects an empty payload')
       const result = await service.startLogin()
-      void openAuthorizationUrl(result.authorizationUrl).catch(() => false)
+      if (typeof opener === 'function') {
+        void Promise.resolve().then(() => opener(result.authorizationUrl)).catch(() => false)
+      }
       return { ok: true, value: result }
     }
     if (endpoint === 'cancel' || endpoint === 'cancel-login') {

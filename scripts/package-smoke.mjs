@@ -11,8 +11,11 @@ const sourceRoot = resolve(import.meta.dirname, '..')
 const temporary = await mkdtemp(resolve(sourceRoot, '.package-smoke-'))
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 try {
+  const packDestinationArg = process.platform === 'win32'
+    ? `--pack-destination="${temporary}"`
+    : `--pack-destination=${temporary}`
   const output = execFileSync(npmCmd, [
-    'pack', '--json', '--ignore-scripts', `--pack-destination="${temporary}"`,
+    'pack', '--json', '--ignore-scripts', packDestinationArg,
   ], {
     cwd: sourceRoot,
     encoding: 'utf8',
@@ -23,10 +26,8 @@ try {
   const packed = JSON.parse(output.slice(jsonStart < 0 ? 0 : jsonStart + 1))
   const filename = packed?.[0]?.filename
   if (typeof filename !== 'string') throw new Error('package smoke: npm pack returned no artifact')
-  const tarArgs = process.platform === 'win32'
-    ? ['--force-local', '-xzf', resolve(temporary, filename), '-C', temporary]
-    : ['-xzf', resolve(temporary, filename), '-C', temporary]
-  execFileSync('tar', tarArgs)
+  // Use relative filename with cwd to avoid drive-letter colons on Windows, compatible with both bsdtar and GNU tar without --force-local
+  execFileSync('tar', ['-xzf', filename], { cwd: temporary })
 
   const packageRoot = resolve(temporary, 'package')
   const manifest = JSON.parse(await readFile(resolve(packageRoot, 'package.json'), 'utf8'))

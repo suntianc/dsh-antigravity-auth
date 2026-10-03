@@ -441,7 +441,7 @@ export class AntigravityAdapter extends LlmAdapter {
       kind: state.kind,
       ...(state.signature === undefined ? {} : { signature: state.signature }),
     }))
-    const replayState = createReplayState(options.model, antigravityModelFamily(options.model), finish, replayBlocks)
+    const replayState = createReplayState(options.model, antigravityModelFamily(options.model), finish, replayBlocks, options.provider)
     yield finishChunk(mapFinishReason(finish), finish ?? 'STOP', undefined, replayState)
   }
 
@@ -766,7 +766,7 @@ export function buildAntigravityGeneratePayload(options: GenerateOptions, creden
   const toolNames = new Map<string, string>()
   const contents = options.messages
     .filter(message => message.role !== 'system')
-    .map(message => mapMessage(message, options.model, toolNames))
+    .map(message => mapMessage(message, options.model, toolNames, options.provider))
   return buildPayloadFromContents(options, credential, contents)
 }
 
@@ -781,7 +781,7 @@ async function buildAntigravityGeneratePayloadForAdapter(
   const toolNames = new Map<string, string>()
   for (const message of options.messages) {
     if (message.role === 'system') continue
-    contents.push(await mapMessageWithAttachments(message, options.model, toolNames, attachments, options.signal))
+    contents.push(await mapMessageWithAttachments(message, options.model, toolNames, attachments, options.signal, options.provider))
   }
   const payload = buildPayloadFromContents(options, credential, contents)
   const metadata = buildAgyAgentRequestMetadata(session, payload.request as Record<string, unknown>, resolveWireModel(options.model, options.reasoningEffort), timestamp)
@@ -971,10 +971,10 @@ function findMessageReasoningSignature(
   return undefined
 }
 
-function mapMessage(message: RequestMessage, model: string, toolNames: Map<string, string>): Record<string, unknown> {
+function mapMessage(message: RequestMessage, model: string, toolNames: Map<string, string>, provider: string = ANTIGRAVITY_PROVIDER): Record<string, unknown> {
   if (message.role === 'tool') return mapToolResult(message, model, toolNames)
   const parts: Record<string, unknown>[] = []
-  const replay = message.role === 'assistant' ? compatibleReplayState(message, ANTIGRAVITY_PROVIDER, model, contentKinds(message)) : undefined
+  const replay = message.role === 'assistant' ? compatibleReplayState(message, provider, model, contentKinds(message)) : undefined
   const replayBlocks = replay?.blocks ?? []
   const messageReasoningSignature = findMessageReasoningSignature(message, replayBlocks)
   const isClaude = antigravityModelFamily(model) === 'claude'
@@ -1024,10 +1024,11 @@ async function mapMessageWithAttachments(
   toolNames: Map<string, string>,
   attachments: Pick<AttachmentStore, 'readImage'> | undefined,
   signal: AbortSignal | undefined,
+  provider: string = ANTIGRAVITY_PROVIDER,
 ): Promise<Record<string, unknown>> {
-  if (message.role === 'tool' || !message.content.some(block => block.type === 'image')) return mapMessage(message, model, toolNames)
+  if (message.role === 'tool' || !message.content.some(block => block.type === 'image')) return mapMessage(message, model, toolNames, provider)
   if (attachments === undefined) throw new LlmError('Antigravity image input requires the Host AttachmentStore', 'UNSUPPORTED_MODALITY')
-  const replay = message.role === 'assistant' ? compatibleReplayState(message, ANTIGRAVITY_PROVIDER, model, contentKinds(message)) : undefined
+  const replay = message.role === 'assistant' ? compatibleReplayState(message, provider, model, contentKinds(message)) : undefined
   const replayBlocks = replay?.blocks ?? []
   const messageReasoningSignature = findMessageReasoningSignature(message, replayBlocks)
   const parts: Record<string, unknown>[] = []
