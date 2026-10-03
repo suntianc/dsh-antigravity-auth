@@ -122,6 +122,30 @@ describe('Antigravity login RPC', () => {
     await service.dispose()
   })
 
+  it('supports an injectable opener during login and safely ignores opener rejection without throwing', async () => {
+    const listener = { close: vi.fn(async () => {}) }
+    const service = createBootstrapStatusService({
+      flowOptions: { listenerFactory: { listen: vi.fn(async () => listener) } },
+    })
+    await handleAntigravityAuthRpc(service, 'acknowledge-risk', { acknowledge: true }, signal)
+
+    const opener = vi.fn(() => false)
+    const login = await handleAntigravityAuthRpc(service, 'login', {}, signal, undefined, opener)
+    expect(login).toMatchObject({ ok: true, value: { started: true, phase: 'pending' } })
+    expect(opener).toHaveBeenCalledOnce()
+    const calledUrl = opener.mock.calls[0]?.[0]
+    expect(typeof calledUrl).toBe('string')
+    expect(calledUrl).toContain('accounts.google.com')
+
+    // Opener throwing does not break login response
+    const failingOpener = vi.fn(() => { throw new Error('opener error') })
+    await handleAntigravityAuthRpc(service, 'cancel', {}, signal)
+    const login2 = await handleAntigravityAuthRpc(service, 'login', {}, signal, undefined, failingOpener)
+    expect(login2).toMatchObject({ ok: true, value: { started: true, phase: 'pending' } })
+
+    await service.dispose()
+  })
+
   it('keeps local logout separate from confirmed grant revocation', async () => {
     const localStore = createMemoryAuthStore()
     await localStore.commit({ refreshToken: 'local-refresh', projectId: 'project-id' })

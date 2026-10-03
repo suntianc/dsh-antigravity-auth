@@ -3,6 +3,7 @@ import {
   PROJECT_DISCOVERY_ENDPOINT,
   ProjectDiscoveryError,
   createProjectDiscovery,
+  normalizeProjectId,
 } from '../src/project-context.ts'
 import { PrivateTransportError } from '../src/private-transport.ts'
 import type { PrivateTransport, PrivateTransportRequest } from '../src/private-transport.ts'
@@ -79,5 +80,47 @@ describe('read-only Antigravity project discovery', () => {
     await expect(operation).rejects.toBeInstanceOf(ProjectDiscoveryError)
     await expect(operation).rejects.toMatchObject({ code: 'protocol-drift' })
     expect(transport.request).toHaveBeenCalledOnce()
+  })
+
+  describe('normalizeProjectId and prefix stripping', () => {
+    it('strips projects/ prefix correctly', () => {
+      expect(normalizeProjectId('projects/my-gen-ai-project-123')).toBe('my-gen-ai-project-123')
+      expect(normalizeProjectId('  projects/another-project_456  ')).toBe('another-project_456')
+    })
+
+    it('accepts alphanumeric, underscores, and dashes', () => {
+      expect(normalizeProjectId('project-123')).toBe('project-123')
+      expect(normalizeProjectId('a_b-c_123')).toBe('a_b-c_123')
+      expect(normalizeProjectId('0abc-def')).toBe('0abc-def')
+    })
+
+    it('enforces length constraints up to 128 characters and rejects longer values', () => {
+      const valid128 = 'a' + 'b'.repeat(127)
+      expect(normalizeProjectId(valid128)).toBe(valid128)
+
+      const invalid129 = 'a' + 'b'.repeat(128)
+      expect(normalizeProjectId(invalid129)).toBeUndefined()
+    })
+
+    it('rejects invalid inputs such as uppercase, special characters, whitespace or non-string', () => {
+      expect(normalizeProjectId('Project-Uppercase')).toBeUndefined()
+      expect(normalizeProjectId('invalid@chars!')).toBeUndefined()
+      expect(normalizeProjectId('has space')).toBeUndefined()
+      expect(normalizeProjectId('')).toBeUndefined()
+      expect(normalizeProjectId('   ')).toBeUndefined()
+      expect(normalizeProjectId('projects/')).toBeUndefined()
+      expect(normalizeProjectId('-startsWithDash')).toBeUndefined()
+      expect(normalizeProjectId(null)).toBeUndefined()
+      expect(normalizeProjectId(12345)).toBeUndefined()
+      expect(normalizeProjectId({})).toBeUndefined()
+    })
+
+    it('discovery strips projects/ prefix in response', async () => {
+      const transport = transportWith(async () => response({
+        cloudaicompanionProject: { id: 'projects/enterprise-ai-987' },
+      }))
+      const discovery = createProjectDiscovery({ transport })
+      await expect(discovery.discover('access-secret')).resolves.toEqual({ projectId: 'enterprise-ai-987' })
+    })
   })
 })

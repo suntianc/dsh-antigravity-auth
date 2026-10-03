@@ -7,6 +7,7 @@ import type { BootstrapStatusService } from './status.ts'
 import type { QuotaStatusView } from './quota.ts'
 import { isSafeRpcErrorCode, safeRpcErrorMessage } from './rpc-vocabulary.ts'
 import type { AntigravityModelCatalogService } from './model-catalog.ts'
+import { openAuthorizationUrl } from './open-authorization-url.ts'
 
 export { ANTIGRAVITY_AUTH_RPC_CHANNEL, ANTIGRAVITY_AUTH_RPC_NAMESPACE } from './rpc-contract.ts'
 
@@ -17,6 +18,7 @@ export async function handleAntigravityAuthRpc(
   payload: unknown,
   signal?: AbortSignal,
   modelCatalog?: AntigravityModelCatalogService,
+  opener?: (url: string) => boolean | Promise<boolean>,
 ): Promise<RpcResult<unknown>> {
   if (signal?.aborted === true) return cancelled()
 
@@ -46,7 +48,11 @@ export async function handleAntigravityAuthRpc(
     }
     if (endpoint === 'login') {
       if (!isEmptyRecord(payload)) return badRequest('login expects an empty payload')
-      return { ok: true, value: await service.startLogin() }
+      const result = await service.startLogin()
+      if (typeof opener === 'function') {
+        void Promise.resolve().then(() => opener(result.authorizationUrl)).catch(() => false)
+      }
+      return { ok: true, value: result }
     }
     if (endpoint === 'cancel' || endpoint === 'cancel-login') {
       if (!isEmptyRecord(payload)) return badRequest('cancel expects an empty payload')

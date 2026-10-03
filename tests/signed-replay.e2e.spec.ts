@@ -8,7 +8,7 @@
  * affected sessions, where a turn replied with reasoning plus a tool call and
  * the follow-up request replaying that history was refused.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AntigravityAdapter, ANTIGRAVITY_PROVIDER } from '../src/llm-adapter.ts'
 import type { HostCredential } from '../src/credential-coordinator.ts'
 import type { PrivateTransportRequest } from '../src/private-transport.ts'
@@ -170,5 +170,99 @@ describe('Antigravity signed replay', () => {
       code: 'PROTOCOL_DRIFT',
       message: expect.stringContaining('HTTP 400'),
     })
+  })
+
+  it('preserves thinking signatures and image attachments on multi-turn history routed via google alias', async () => {
+    const model = 'antigravity-gemini-3.7-flash'
+    const toolCallId = 'call-google-alias-1'
+    const messages: Message[] = [
+      {
+        id: 'user-img-1' as never,
+        role: 'user',
+        source: { kind: 'user' },
+        content: [
+          { type: 'text', text: 'analyze this diagram' },
+          { type: 'image', attachment: 'diag-img-id' as never },
+        ],
+      },
+      {
+        id: 'assistant-1' as never,
+        role: 'assistant',
+        content: [
+          { type: 'reasoning', text: 'Inspecting diagram contents.' },
+          { type: 'tool-call', id: toolCallId, name: 'glob', arguments: '{"pattern":"*.png"}' },
+        ],
+        source: {
+          kind: 'model',
+          provider: 'google',
+          model,
+          replayState: {
+            response: { version: 1, provider: 'google', model, family: 'gemini', finish: 'STOP' },
+            blocks: [{ kind: 'reasoning', signature: REAL_SIGNATURE }, { kind: 'tool-call' }],
+          },
+        },
+      } as unknown as Message,
+      {
+        id: 'result-1' as never,
+        role: 'tool',
+        source: { kind: 'tool', callId: toolCallId as never },
+        toolCallId: toolCallId as never,
+        isError: false,
+        content: [{ type: 'text', text: 'diagram.png' }],
+      },
+    ]
+
+    let observed: readonly RecordedContent[] = []
+    const attachments = {
+      readImage: vi.fn(async () => ({
+        ref: { mediaType: 'image/png' },
+        data: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+      })),
+    }
+
+    const adapter = new AntigravityAdapter({
+      auth: { credential: async () => credential('opaque-test-value') },
+      attachments: attachments as never,
+      transport: {
+        request: async input => {
+          const payload = JSON.parse(String(input.body)) as { request?: { contents?: RecordedContent[] } }
+          observed = payload.request?.contents ?? []
+          return new Response('data: {"response":{"parts":[{"text":"analysis complete"}],"finishReason":"STOP"}}\n\n')
+        },
+      },
+    })
+
+    const chunks = await collect(adapter, {
+      provider: 'google',
+      model,
+      messages,
+      tools: [{
+        name: 'glob',
+        description: 'Find files',
+        parameters: { type: 'object', properties: { pattern: { type: 'string' } }, required: ['pattern'] },
+      }],
+    })
+
+    const finish = chunks.at(-1)
+    expect(finish).toMatchObject({ type: 'finish' })
+    if (finish?.type === 'finish') {
+      expect(finish.replayState).toMatchObject({
+        response: { provider: 'google', model, family: 'gemini' },
+      })
+    }
+
+    // Verify image attachment admitted and base64 encoded
+    const userContent = observed.find(c => c.role === 'user')
+    const inlineDataPart = userContent?.parts.find(p => p.inlineData !== undefined)
+    expect(inlineDataPart?.inlineData).toMatchObject({
+      mimeType: 'image/png',
+      data: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).toString('base64'),
+    })
+
+    // Verify thinking signature preserved from the google-routed turn
+    const callPart = observed
+      .flatMap(content => content.parts)
+      .find(part => part.functionCall !== undefined)
+    expect(callPart?.thoughtSignature).toBe(REAL_SIGNATURE)
   })
 })

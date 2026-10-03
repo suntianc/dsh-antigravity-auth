@@ -23,7 +23,7 @@ const MAX_RESPONSE_BYTES = Math.min(DEFAULT_PRIVATE_RESPONSE_BYTES, 64 * 1024)
 const DEFAULT_OPERATION_TIMEOUT_MS = 10_000
 const MAX_OPERATION_TIMEOUT_MS = 10 * 60 * 1000
 const MAX_PROJECT_ID_LENGTH = 128
-const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{2,127}$/u
+const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9-_]{1,127}$/u
 
 export type ProjectDiscoveryErrorCode =
   | 'authentication'
@@ -113,7 +113,10 @@ export const createProjectContext = createProjectDiscovery
 /** Normalize the only project field that may cross into the credential store. */
 export function normalizeProjectId(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
-  const normalized = value.trim()
+  let normalized = value.trim()
+  if (normalized.startsWith('projects/')) {
+    normalized = normalized.slice('projects/'.length).trim()
+  }
   if (normalized.length === 0 || normalized.length > MAX_PROJECT_ID_LENGTH) return undefined
   return PROJECT_ID_PATTERN.test(normalized) ? normalized : undefined
 }
