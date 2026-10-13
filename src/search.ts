@@ -159,7 +159,7 @@ export function apply(ctx?: Context, config: Config = { enabled: true, model: AN
     register: () => {
       const unregister = candidate.web!.registerSearchProvider(new AntigravitySearchProvider({ auth, settings: () => current() }))
       const previousSearchProviderId = candidate.web!.searchProviderId
-      if (!previousSearchProviderId || previousSearchProviderId === 'deepseek-official') {
+      if (previousSearchProviderId === undefined) {
         candidate.web!.searchProviderId = ANTIGRAVITY_SEARCH_PROVIDER_ID
       }
       return () => {

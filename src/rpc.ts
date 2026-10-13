@@ -7,7 +7,6 @@ import type { BootstrapStatusService } from './status.ts'
 import type { QuotaStatusView } from './quota.ts'
 import { isSafeRpcErrorCode, safeRpcErrorMessage } from './rpc-vocabulary.ts'
 import type { AntigravityModelCatalogService } from './model-catalog.ts'
-import { openAuthorizationUrl } from './open-authorization-url.ts'
 
 export { ANTIGRAVITY_AUTH_RPC_CHANNEL, ANTIGRAVITY_AUTH_RPC_NAMESPACE } from './rpc-contract.ts'
 
