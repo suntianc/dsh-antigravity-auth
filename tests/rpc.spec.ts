@@ -133,9 +133,7 @@ describe('Antigravity login RPC', () => {
     const login = await handleAntigravityAuthRpc(service, 'login', {}, signal, undefined, opener)
     expect(login).toMatchObject({ ok: true, value: { started: true, phase: 'pending' } })
     expect(opener).toHaveBeenCalledOnce()
-    const calledUrl = opener.mock.calls[0]?.[0]
-    expect(typeof calledUrl).toBe('string')
-    expect(calledUrl).toContain('accounts.google.com')
+    expect(opener).toHaveBeenCalledWith(expect.stringContaining('accounts.google.com'))
 
     // Opener throwing does not break login response
     const failingOpener = vi.fn(() => { throw new Error('opener error') })

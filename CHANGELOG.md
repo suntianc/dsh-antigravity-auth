@@ -9,6 +9,12 @@
 - Register `google` as an alias provider route alongside `google-antigravity` so sessions and configurations specifying `google` seamlessly route to `AntigravityAdapter`.
 - Robustify project ID normalization to handle resource name prefixes and alphanumeric IDs.
 
+## [0.1.4-rc.6] - 2026-10-13
+
+- Adapt the plugin to DSH `0.2.0-rc.2` and keep the tested dependency graph coherent.
+- Keep Host test fixtures isolated from live profile data and preserve explicit Web Search provider selections.
+- Normalize Antigravity project IDs across resource-name and alphanumeric forms.
+
 ## [0.1.4-rc.5] - 2026-09-28
 
 - Align the plugin and its dependency graph with DSH `0.2.0-rc.1`, Cordis `4.0.4`, and Schemastery `3.18.4`.
