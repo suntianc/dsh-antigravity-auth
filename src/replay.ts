@@ -14,9 +14,15 @@ export interface AntigravityReplayBlock {
   readonly signature?: string
 }
 
+export const ANTIGRAVITY_SUPPORTED_PROVIDERS: ReadonlySet<string> = new Set(['google-antigravity', 'google'])
+
+export function isAntigravityProvider(provider: unknown): provider is 'google-antigravity' | 'google' {
+  return typeof provider === 'string' && ANTIGRAVITY_SUPPORTED_PROVIDERS.has(provider)
+}
+
 export interface AntigravityReplayResponse {
   readonly version: typeof ANTIGRAVITY_REPLAY_VERSION
-  readonly provider: 'google-antigravity'
+  readonly provider: 'google-antigravity' | 'google'
   readonly model: string
   readonly family: 'gemini' | 'claude' | 'gpt-oss' | 'unknown'
   readonly finish?: string
@@ -33,6 +39,7 @@ export function createReplayState(
   family: AntigravityReplayResponse['family'],
   finish: string | undefined,
   blocks: readonly AntigravityReplayBlock[],
+  provider: string = 'google-antigravity',
 ): AntigravityReplayState {
   const boundedBlocks: AntigravityReplayBlock[] = blocks.slice(0, MAX_BLOCKS).map(block => {
     const signature = safeSignature(block.signature)
@@ -42,7 +49,7 @@ export function createReplayState(
   return {
     response: {
       version: ANTIGRAVITY_REPLAY_VERSION,
-      provider: 'google-antigravity',
+      provider: isAntigravityProvider(provider) ? provider : 'google-antigravity',
       model: model.slice(0, 256),
       family,
       ...(boundedFinish === undefined ? {} : { finish: boundedFinish }),
@@ -58,9 +65,11 @@ export function compatibleReplayState(
   model: string,
   blockKinds?: readonly ReplayBlockKind[],
 ): AntigravityReplayState | undefined {
-  if (provider !== 'google-antigravity' || message.role !== 'assistant') return undefined
+  if (!isAntigravityProvider(provider) || message.role !== 'assistant') return undefined
   const provenance = isRecord(message.source) ? (message.source as Record<string, unknown>) : undefined
-  if (provenance !== undefined && provenance.kind === 'model' && (provenance.provider !== provider || provenance.model !== model)) return undefined
+  if (provenance !== undefined && provenance.kind === 'model') {
+    if (!isAntigravityProvider(provenance.provider) || provenance.model !== model) return undefined
+  }
   const value = isRecord(provenance?.replayState)
     ? provenance.replayState
     : isRecord((message as unknown as Record<string, unknown>).replayState)
@@ -69,7 +78,7 @@ export function compatibleReplayState(
   if (!isRecord(value) || !isRecord(value.response) || !Array.isArray(value.blocks)) return undefined
   const family = value.response.family
   if (value.response.version !== ANTIGRAVITY_REPLAY_VERSION
-    || value.response.provider !== provider
+    || !isAntigravityProvider(value.response.provider)
     || value.response.model !== model
     || !isFamily(family)
     || value.blocks.length > MAX_BLOCKS) return undefined
@@ -87,7 +96,7 @@ export function compatibleReplayState(
   return {
     response: {
       version: ANTIGRAVITY_REPLAY_VERSION,
-      provider: 'google-antigravity',
+      provider: isAntigravityProvider(provider) ? provider : 'google-antigravity',
       model,
       family,
       ...(finish === undefined ? {} : { finish }),

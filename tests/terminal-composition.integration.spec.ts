@@ -48,7 +48,11 @@ async function mountTerminal(): Promise<{ ctx: Context; agent: Agent }> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-antigravity-terminal-'))
   tempDirs.push(root)
   const previousDataHome = process.env.XDG_DATA_HOME
+  const previousLocalAppData = process.env.LOCALAPPDATA
+  const previousAppData = process.env.APPDATA
   process.env.XDG_DATA_HOME = root
+  process.env.LOCALAPPDATA = root
+  process.env.APPDATA = root
   const ctx = new Context()
   contexts.push(ctx)
   try {
@@ -62,6 +66,10 @@ async function mountTerminal(): Promise<{ ctx: Context; agent: Agent }> {
   } finally {
     if (previousDataHome === undefined) delete process.env.XDG_DATA_HOME
     else process.env.XDG_DATA_HOME = previousDataHome
+    if (previousLocalAppData === undefined) delete process.env.LOCALAPPDATA
+    else process.env.LOCALAPPDATA = previousLocalAppData
+    if (previousAppData === undefined) delete process.env.APPDATA
+    else process.env.APPDATA = previousAppData
   }
 }
 

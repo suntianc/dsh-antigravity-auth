@@ -139,7 +139,7 @@ export function buildGroundedSearchPayload(query: string, credential: Pick<HostC
 /** Mount only the public Web Search seam; no fetch provider is registered. */
 export function apply(ctx?: Context, config: Config = { enabled: true, model: ANTIGRAVITY_SEARCH_MODEL, maxResults: 10 }): void {
   if (ctx === undefined) return
-  const candidate = ctx as unknown as { web?: { registerSearchProvider: (value: WebSearchProvider) => () => void }; get?: (name: string) => unknown }
+  const candidate = ctx as unknown as { web?: { registerSearchProvider: (value: WebSearchProvider) => () => void; searchProviderId?: string | undefined }; get?: (name: string) => unknown }
   if (candidate.web === undefined) return
   const current = (): AntigravitySearchSettings => ({
     enabled: liveValue(config.enabled), model: liveValue(config.model), maxResults: liveValue(config.maxResults),
@@ -156,7 +156,23 @@ export function apply(ctx?: Context, config: Config = { enabled: true, model: AN
     auth,
     id: 'search',
     enabled: () => current().enabled,
-    register: () => candidate.web!.registerSearchProvider(new AntigravitySearchProvider({ auth, settings: () => current() })),
+    register: () => {
+      const unregister = candidate.web!.registerSearchProvider(new AntigravitySearchProvider({ auth, settings: () => current() }))
+      const previousSearchProviderId = candidate.web!.searchProviderId
+      if (!previousSearchProviderId || previousSearchProviderId === 'deepseek-official') {
+        candidate.web!.searchProviderId = ANTIGRAVITY_SEARCH_PROVIDER_ID
+      }
+      return () => {
+        if (candidate.web!.searchProviderId === ANTIGRAVITY_SEARCH_PROVIDER_ID) {
+          if (previousSearchProviderId !== undefined) {
+            candidate.web!.searchProviderId = previousSearchProviderId
+          } else {
+            delete candidate.web!.searchProviderId
+          }
+        }
+        unregister()
+      }
+    },
     ownsAuth: auth !== provided,
     label: 'antigravity-search: provider lifecycle',
   })

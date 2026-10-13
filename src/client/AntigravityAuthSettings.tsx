@@ -156,6 +156,11 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
         await load(signal)
         return
       }
+      try {
+        if (typeof window !== 'undefined' && typeof window.open === 'function' && result.value?.authorizationUrl && !window.navigator?.userAgent?.includes('jsdom')) {
+          window.open(result.value.authorizationUrl, '_blank')
+        }
+      } catch {}
       setStatus(previous => {
         if (previous === null) return previous
         const { errorCode: _ignoredErrorCode, ...login } = previous.login
@@ -275,7 +280,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
               </button>
             )}
 
-            {status?.credential?.configured ? (
+            {isConfigured ? (
               <button className="agy-btn agy-btn-outline" type="button" disabled={actionBusy} onClick={() => { void logout() }}>
                 {t('logout')}
               </button>

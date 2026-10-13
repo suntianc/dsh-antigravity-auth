@@ -3,3 +3,4 @@ lib/
 .package-smoke-*/
 *.tgz
 .DS_Store
+.pi/

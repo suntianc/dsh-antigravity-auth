@@ -66,7 +66,11 @@ export function apply(ctx: Context): void {
     register: () => {
       if (runtime.llm?.registerAdapter === undefined) return undefined
       if (runtime.llm.listProviders?.().some(provider => provider.id === ANTIGRAVITY_PROVIDER)) return undefined
-      const dispose = runtime.llm.registerAdapter([ANTIGRAVITY_PROVIDER], adapter)
+      const routes: string[] = [ANTIGRAVITY_PROVIDER]
+      if (!runtime.llm.listProviders?.().some(provider => provider.id === 'google')) {
+        routes.push('google')
+      }
+      const dispose = runtime.llm.registerAdapter(routes, adapter)
       return () => {
         try { dispose() } finally { adapter.invalidateModelCatalog() }
       }
@@ -81,7 +85,7 @@ export function apply(ctx: Context): void {
     commandCtx.commands.register({
       ...mainCommand,
       name: 'anti',
-      description: 'Antigravity OAuth 多账号管理与切换 (/anti accounts | switch | login)',
+      description: 'Antigravity OAuth multi-account management and switching (/anti accounts | switch | login)',
     })
   })
 }
