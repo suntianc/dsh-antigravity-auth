@@ -2,18 +2,15 @@
 
 ## [Unreleased]
 
-- Raise the minimum and exact tested DSH dependency graph to `0.2.0-rc.2`; keep Cordis `4.0.4`, Schemastery `3.18.4`, and Antigravity core `2.2.0`.
+## [0.1.4-rc.6] - 2026-10-13
+
+- Adapt the plugin to DSH `0.2.0-rc.2` and keep the tested dependency graph coherent.
 - Preserve the existing credential isolation, V4 tool history, signed replay, and concurrent search cancellation behavior.
 - Update the matching official source verification target and remove obsolete prerelease age exceptions.
 - Fix Windows test isolation so test fixtures do not overwrite live user credentials or capability gates in `%LOCALAPPDATA%\dsh-antigravity-auth`.
 - Register `google` as an alias provider route alongside `google-antigravity` so sessions and configurations specifying `google` seamlessly route to `AntigravityAdapter`.
 - Robustify project ID normalization to handle resource name prefixes and alphanumeric IDs.
-
-## [0.1.4-rc.6] - 2026-10-13
-
-- Adapt the plugin to DSH `0.2.0-rc.2` and keep the tested dependency graph coherent.
 - Keep Host test fixtures isolated from live profile data and preserve explicit Web Search provider selections.
-- Normalize Antigravity project IDs across resource-name and alphanumeric forms.
 
 ## [0.1.4-rc.5] - 2026-09-28
 

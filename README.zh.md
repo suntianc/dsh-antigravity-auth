@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH 兼容性（当前源码）：** 最低及测试开发基线为 DSH `0.2.0-rc.2`。已发布的 `0.1.4-rc.5` 仍基于 DSH `0.2.0-rc.1`；rc.2 适配尚未发布。见[验证说明](docs/dsh-source-verification.md)。
+> **DSH 兼容性：** 已发布的 `0.1.4-rc.6` 以 DSH `0.2.0-rc.2` 为最低及已测试基线。旧版 DSH Host 请使用兼容的旧版插件。见[验证说明](docs/dsh-source-verification.md)。
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) | 中文
 
-发布版本：**v0.1.4-rc.5**（npm 标签：`rc`）。
+发布版本：**v0.1.4-rc.6**（npm 标签：`rc`）。
 
 这是一个自包含的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity 能力包**。它集成了 Antigravity 的私有 OAuth 登录态与 Wire Identity 线路身份，提供：
@@ -23,6 +23,10 @@
 
 > **⚠️ 非官方通道——仅限个人开发。** 私有、受账户权限控制的 Antigravity
 > 后端服务未获官方支持、可随时撤销，也可能在没有通知的情况下被限流或变更。请勿依赖它承载生产任务。
+
+## 0.1.4-rc.6：适配 DSH 0.2.0-rc.2 与选择保持修复
+
+此版本将最低及已测试的 DSH 依赖图升级到 `0.2.0-rc.2`，并保留既有凭据隔离、历史重放与取消行为。同时隔离 Host 测试 fixture 与真实 profile 数据，增加 `google` 提供方别名，规范化 Antigravity project ID，并在自动注册时保留用户明确选择的 `deepseek-official` 网页搜索提供方。完整包检查与固定源码检查已通过；真实账号和私有传输尚未验证。
 
 ## 0.1.4-rc.5：适配 DSH 0.2.0-rc.1
 
@@ -108,13 +112,11 @@
 
 ## 安装（已发布版本）
 
-以下命令安装基于 DSH rc.1 的现有版本，不是尚未发布的 rc.2 源码。
-
-先停止 `dsh web`，确认目标 Host 使用统一的 DSH `0.2.0-rc.1` 依赖图，再将此准确预发布版本安装到目标 profile：
+先停止 `dsh web`，确认目标 Host 使用统一的 DSH `0.2.0-rc.2` 依赖图，再将此准确预发布版本安装到目标 profile：
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.5
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.6
 dsh plugin --profile web list
 ```
 

@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH compatibility (current checkout):** DSH `0.2.0-rc.2` is the minimum and tested development baseline. Published `0.1.4-rc.5` remains on DSH `0.2.0-rc.1`; the rc.2 adaptation is unreleased. See [verification](docs/dsh-source-verification.md).
+> **DSH compatibility:** DSH `0.2.0-rc.2` is the minimum and tested baseline for published `0.1.4-rc.6`. Older DSH Hosts should use a compatible older plugin release. See [verification](docs/dsh-source-verification.md).
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 English | [中文](README.zh.md)
 
-Release: **v0.1.4-rc.5** (npm tag: `rc`).
+Release: **v0.1.4-rc.6** (npm tag: `rc`).
 
 A self-contained [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity Capability Bundle**. It integrates Antigravity's private OAuth session
@@ -26,6 +26,10 @@ The settings section follows the DSH interface language (English or Chinese), in
 > account-gated Antigravity backend surface is unsupported, revocable, and
 > may be rate-limited or changed without notice. Do not rely on it for
 > production workloads.
+
+## 0.1.4-rc.6: DSH 0.2.0-rc.2 adaptation and selection fixes
+
+This release raises the minimum and tested DSH dependency graph to `0.2.0-rc.2`, while preserving the existing credential, replay, and cancellation behavior. It also isolates Host test fixtures from live profile data, adds the `google` provider alias, normalizes Antigravity project IDs, and preserves an explicit `deepseek-official` Web Search selection instead of overriding it during automatic registration. The complete package and tagged-source checks pass; live account and private transport behavior remain unverified.
 
 ## 0.1.4-rc.5: DSH 0.2.0-rc.1 adaptation
 
@@ -114,13 +118,11 @@ Multimodal `analyze_video` tool accepts workspace MP4 videos, performing bounded
 
 ## Install (published release)
 
-The commands below install the existing rc.1-based release, not the unreleased rc.2 checkout.
-
-Stop `dsh web`, ensure the target Host uses a coherent DSH `0.2.0-rc.1` graph, then install this exact prerelease into the intended profile:
+Stop `dsh web`, ensure the target Host uses a coherent DSH `0.2.0-rc.2` graph, then install this exact prerelease into the intended profile:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.5
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.6
 dsh plugin --profile web list
 ```
 
