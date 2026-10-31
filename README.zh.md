@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH 兼容性：** 已发布的 `0.1.4-rc.6` 以 DSH `0.2.0-rc.2` 为最低及已测试基线。旧版 DSH Host 请使用兼容的旧版插件。见[验证说明](docs/dsh-source-verification.md)。
+> **DSH 兼容性：** `0.1.4` 不限制 DSH 版本范围，开发测试基线为 DSH `0.2.1-rc.5`；这些检查未验证其他版本。见[验证说明](docs/dsh-source-verification.md)。
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) | 中文
 
-发布版本：**v0.1.4-rc.6**（npm 标签：`rc`）。
+发布版本：**v0.1.4**（npm 标签：`latest`）。
 
 这是一个自包含的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity 能力包**。它集成了 Antigravity 的私有 OAuth 登录态与 Wire Identity 线路身份，提供：
@@ -23,6 +23,10 @@
 
 > **⚠️ 非官方通道——仅限个人开发。** 私有、受账户权限控制的 Antigravity
 > 后端服务未获官方支持、可随时撤销，也可能在没有通知的情况下被限流或变更。请勿依赖它承载生产任务。
+
+## 0.1.4：适配 DSH 0.2.1
+
+开发测试依赖图升级至 DSH `0.2.1-rc.5`，账号 RPC 转发当前请求通过认证的身份，网页搜索保留 Host 的提供方选择。DSH peer 不设版本范围，安装不会仅因 Host 版本被拦截；这不代表未经验证的版本一定可用。完整包检查和固定源码检查已通过，并在隔离 Web Host 中验证未登录状态接口；没有发起真实 OAuth 或私有接口请求。
 
 ## 0.1.4-rc.6：适配 DSH 0.2.0-rc.2 与选择保持修复
 
@@ -84,6 +88,8 @@
 
 `antigravity-search` Host 行通过 `@deepseek-ai/dsh-web` 注册 ID 为 `antigravity` 的全局搜索提供方。基于审计过的 Wire Identity 线路分发请求，返回真实 grounding 来源与去重检验过的 HTTP(S) 链接。
 
+搜索提供方由 DSH 选择。存在多个可用提供方时，请在 Host 的网页搜索配置中选择 `antigravity`；插件不会覆盖已有选择。
+
 ### 图片创作与编辑
 
 `generate_image` 为模型提供统一操作接口，分发至 Antigravity 图片端点：
@@ -105,22 +111,22 @@
 
 ## 环境要求（当前源码）
 
-- DeepSeek Harness `0.2.0-rc.2`（统一依赖图；npm 与对应源码制品分别验证）。
+- DeepSeek Harness `0.2.1-rc.5`（统一依赖图；npm 与对应源码制品分别验证）。
 - Node.js `^22.19.0` 或 `>=24.0.0`。
 - `PATH` 中可用 `pnpm`（本项目测试版本为 `11.7.0`）。
 - 具有 Antigravity 权限的 Google 账号。
 
 ## 安装（已发布版本）
 
-先停止 `dsh web`，确认目标 Host 使用统一的 DSH `0.2.0-rc.2` 依赖图，再将此准确预发布版本安装到目标 profile：
+先停止 `dsh web`，再将最新发布版安装到目标 profile：
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.6
+dsh plugin --profile web add dsh-antigravity-auth
 dsh plugin --profile web list
 ```
 
-核对条目后重启 `dsh web` 并刷新浏览器。此版本通过 npm 的 `rc` 标签发布；不指定版本或标签会使用 `latest`，它不包含本次 DSH 0.2 适配。旧 DSH Host 应保留兼容的旧插件版本。
+核对条目后重启 `dsh web` 并刷新浏览器。示例使用 `web` profile；请按实际情况替换为 `desktop` 等目标 profile。
 
 ## 终端登录命令
 

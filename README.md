@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH compatibility:** DSH `0.2.0-rc.2` is the minimum and tested baseline for published `0.1.4-rc.6`. Older DSH Hosts should use a compatible older plugin release. See [verification](docs/dsh-source-verification.md).
+> **DSH compatibility:** Version `0.1.4` declares no DSH version range restriction. Its tested development baseline is DSH `0.2.1-rc.5`; other versions have not been verified by these checks. See [verification](docs/dsh-source-verification.md).
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 English | [中文](README.zh.md)
 
-Release: **v0.1.4-rc.6** (npm tag: `rc`).
+Release: **v0.1.4** (npm tag: `latest`).
 
 A self-contained [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity Capability Bundle**. It integrates Antigravity's private OAuth session
@@ -26,6 +26,10 @@ The settings section follows the DSH interface language (English or Chinese), in
 > account-gated Antigravity backend surface is unsupported, revocable, and
 > may be rate-limited or changed without notice. Do not rely on it for
 > production workloads.
+
+## 0.1.4: DSH 0.2.1 compatibility
+
+Updates the tested DSH graph to `0.2.1-rc.5`, forwards the request's admitted peer to account RPC, and respects the Host's Web Search provider selection. DSH peers are unrestricted so installation is not rejected solely by the Host version; this does not imply untested versions will work. The full package and fixed-source checks pass. The disposable Web Host and logged-out account status route were exercised without live OAuth or private endpoint calls.
 
 ## 0.1.4-rc.6: DSH 0.2.0-rc.2 adaptation and selection fixes
 
@@ -90,6 +94,10 @@ The `antigravity-search` Host row registers provider ID `antigravity` through
 the audited Wire Identity dispatcher. Results include the generated output and deduplicated,
 validated HTTP(S) source references.
 
+DSH owns the active search-provider selection. Select `antigravity` in the
+Host's Web Search configuration when multiple providers are available; the
+plugin does not overwrite an existing selection.
+
 ### Image Creation & Editing
 
 `generate_image` presents a unified operation dispatching to Antigravity image endpoints:
@@ -111,22 +119,22 @@ Multimodal `analyze_video` tool accepts workspace MP4 videos, performing bounded
 
 ## Requirements (current checkout)
 
-- DeepSeek Harness `0.2.0-rc.2` (tested coherent dependency graph).
+- DeepSeek Harness `0.2.1-rc.5` (tested coherent dependency graph).
 - Node.js `^22.19.0` or `>=24.0.0`.
 - `pnpm` available on `PATH` (`11.7.0` is the tested project package manager).
 - A Google account with Antigravity access.
 
 ## Install (published release)
 
-Stop `dsh web`, ensure the target Host uses a coherent DSH `0.2.0-rc.2` graph, then install this exact prerelease into the intended profile:
+Stop `dsh web`, then install the latest release into the intended profile:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.4-rc.6
+dsh plugin --profile web add dsh-antigravity-auth
 dsh plugin --profile web list
 ```
 
-Verify the entry, restart `dsh web`, and refresh the browser. This version uses the npm `rc` tag. An install without a version or tag selects `latest`, which does not include this DSH 0.2 adaptation. Older DSH Hosts should retain a compatible older plugin release.
+Verify the entry, restart `dsh web`, and refresh the browser. The example uses the `web` profile; replace it with the intended profile, such as `desktop`.
 
 ## Terminal login command
 

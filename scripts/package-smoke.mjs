@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import semver from 'semver'
 
 const sourceRoot = resolve(import.meta.dirname, '..')
 const temporary = await mkdtemp(resolve(sourceRoot, '.package-smoke-'))
@@ -51,6 +52,7 @@ try {
   const retiredPackages = new Set([
     '@deepseek-ai/dsh-client-runtime',
     '@deepseek-ai/dsh-host-apiproxy',
+    '@deepseek-ai/dsh-invariants',
   ])
   for (const field of ['dependencies', 'peerDependencies', 'devDependencies']) {
     for (const dependency of Object.keys(manifest[field] ?? {})) {
@@ -61,14 +63,26 @@ try {
   if (!Array.isArray(clientInject) || clientInject.some(dependency => retiredPackages.has(dependency))) {
     throw new Error('package smoke: client injection retains a retired DSH package')
   }
-  for (const [dependency, range] of Object.entries(manifest.peerDependencies ?? {})) {
-    if (dependency.startsWith('@deepseek-ai/dsh-') && range !== DSH_PEER_RANGE) {
-      throw new Error(`package smoke: ${dependency} does not declare the verified DSH baseline`)
+  const dshPeers = Object.entries(manifest.peerDependencies ?? {})
+    .filter(([dependency]) => dependency === '@deepseek-ai/dsh' || dependency.startsWith('@deepseek-ai/dsh-'))
+  if (dshPeers.length === 0) throw new Error('package smoke: DSH peer declarations are missing')
+  for (const [dependency, range] of dshPeers) {
+    if (range !== DSH_PEER_RANGE) {
+      throw new Error(`package smoke: ${dependency} restricts the DSH version range`)
     }
+    // DSH's admission check includes prereleases; exercise that exact policy.
+    for (const version of ['0.1.1-rc.2', DSH_VERIFY_VERSION, '0.3.0-alpha.1']) {
+      if (!semver.satisfies(version, range, { includePrerelease: true })) {
+        throw new Error(`package smoke: ${dependency} rejects DSH ${version}`)
+      }
+    }
+  }
+  if (manifest.engines?.dsh !== undefined && manifest.engines.dsh !== '*') {
+    throw new Error('package smoke: engines.dsh restricts the DSH version range')
   }
   if (manifest.peerDependencies?.['@deepseek-ai/cordis'] !== '^4.0.4'
     || manifest.peerDependencies?.['@deepseek-ai/schemastery'] !== '^3.18.4') {
-    throw new Error('package smoke: Cordis or Schemastery peer baseline does not match DSH 0.2.0-rc.2')
+    throw new Error('package smoke: Cordis or Schemastery peer range changed without a compatibility review')
   }
   const patch = await readFile(resolve(packageRoot, 'cordis.patch.yml'), 'utf8')
   for (const row of ['antigravity-auth', 'antigravity-search', 'antigravity-image', 'antigravity-video']) {

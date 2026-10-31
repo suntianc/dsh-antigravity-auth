@@ -1,19 +1,19 @@
 # DSH source compatibility verification
 
-This checkout targets the published DSH `0.2.0-rc.2` graph and its matching
-source tag at `639ed015397290b3745d163aafe02ffee4aa3f84`. Development dependencies,
-the lockfile, peer ranges, and package smoke checks use this baseline. Older plugin releases retain the earlier DSH support;
-the current checkout does not test or advertise that older graph.
+This checkout tests the published DSH `0.2.1-rc.5` graph and its matching
+source tag at `b830ec950faba0a46dda564be3e2d854afed94f1`. Development dependencies,
+the lockfile, and package smoke checks use this baseline. This check does not
+prove behavior on other DSH versions.
 
 ## Build the official artifacts once
 
 Use a separate scratch directory, outside any plugin or live DSH installation:
 
 ```sh
-git clone --depth 1 --branch dsh-v0.2.0-rc.2 https://github.com/deepseek-ai/deepseek-harness.git harness
+git clone --depth 1 --branch dsh-v0.2.1-rc.5 https://github.com/deepseek-ai/deepseek-harness.git harness
 cd harness
 git rev-parse HEAD
-# Must be 639ed015397290b3745d163aafe02ffee4aa3f84.
+# Must be b830ec950faba0a46dda564be3e2d854afed94f1.
 PNPM_CONFIG_MINIMUM_RELEASE_AGE=0 pnpm install --frozen-lockfile --ignore-scripts
 pnpm run build:lib
 pnpm --filter './packages/**' --filter './vendor/*' -r pack --pack-destination ../dsh-packages
@@ -51,12 +51,12 @@ repository, an installed package, or a user profile.
 
 Package smoke checks accept both registry and source-artifact lock identities
 while continuing to verify the selected version. Both registry and source
-checks target `0.2.0-rc.2`; source checks use `DSH_VERIFY_VERSION` explicitly.
+checks target `0.2.1-rc.5`; source checks use `DSH_VERIFY_VERSION` explicitly.
 
 ## 中文说明
 
-当前检出版本以已发布的 DSH `0.2.0-rc.2` 为开发与最低支持基线，
-锁文件、peer 与打包检查使用同一套依赖图；旧 DSH 请保留旧插件版本。
+当前检出版本以已发布的 DSH `0.2.1-rc.5` 为开发和验证基线，
+锁文件与打包检查使用同一套依赖图；此检查不能证明其他 DSH 版本的运行结果。
 
 按上面的固定 tag 构建、打包一次，然后在本插件目录运行
 `pnpm run check:dsh-source -- /绝对路径/dsh-packages`。脚本在临时目录内安装

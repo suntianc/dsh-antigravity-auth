@@ -29,7 +29,7 @@ export interface AntigravityAuthSettingsProps {
 type LoadState = 'loading' | 'ready' | 'error'
 type BooleanSettings = { readonly enabled: boolean }
 type SettingsSnapshot = ConfigFormSnapshot<BooleanSettings>
-const EMPTY_SETTINGS_SNAPSHOT: SettingsSnapshot = { status: 'unavailable', value: undefined, base: undefined, user: undefined, revision: undefined, writable: false, mode: 'memory' }
+const EMPTY_SETTINGS_SNAPSHOT: SettingsSnapshot = { status: 'unavailable', value: undefined, base: undefined, user: undefined, revision: undefined, writable: false }
 
 function useCapabilitySettings<T extends BooleanSettings>(scope: ConfigForm<T> | undefined): SettingsSnapshot & { readonly value: T | undefined } {
   const subscribe = useCallback((listener: () => void) => scope?.subscribe(listener) ?? (() => {}), [scope])

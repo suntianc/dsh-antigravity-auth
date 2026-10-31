@@ -50,7 +50,6 @@ class ReceiverBoundSettingsScope<T> implements ConfigForm<T> {
       user: undefined,
       revision: 1,
       writable: true,
-      mode: 'host',
     }
   }
 

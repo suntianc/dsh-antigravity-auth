@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-30
+
+- Verify the plugin against the coherent DSH `0.2.1-rc.5` graph and forward the admitted request peer for account RPC.
+- Respect DSH WebRuntime provider selection without mutating its private selection state.
+- Remove the DSH version range restriction from published peers and retire the unused `dsh-invariants` peer.
+
 ## [0.1.4-rc.6] - 2026-10-13
 
 - Adapt the plugin to DSH `0.2.0-rc.2` and keep the tested dependency graph coherent.

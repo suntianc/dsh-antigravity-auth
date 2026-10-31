@@ -87,7 +87,7 @@ describe('bootstrap lifecycle boundary', () => {
     })
     const warn = vi.fn()
     const inject = vi.fn((_dependencies: readonly string[], callback: (ctx: unknown) => unknown) => callback({
-      connection: { fetch: { register: handle } },
+      connection: { fetch: { register: handle }, admit: () => ({ peer: {} }) },
       commands: { register: () => () => {} },
       get: (service: string) => service === 'webServer' ? { host: '0.0.0.0' } : undefined,
       logger: { warn },

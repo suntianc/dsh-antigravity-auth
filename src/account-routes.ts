@@ -14,6 +14,12 @@ export function registerAccountRoutes(
     methods: ['POST'],
     requestBody: 'buffered',
     fetch: async request => {
+      // Exact Fetch routes do not receive the carrier's peer. Resolve it from
+      // the same request instead of using a shared or removed operator.
+      const admission = connection.admit(request)
+      if ('rejection' in admission) {
+        return new Response(admission.rejection === 401 ? 'unauthorized' : 'forbidden', { status: admission.rejection })
+      }
       if (request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json') {
         return new Response('content type must be application/json', { status: 415 })
       }
@@ -26,7 +32,7 @@ export function registerAccountRoutes(
       let result
       try {
         result = method === `${namespace}/${endpoint}`
-          ? await handler(endpoint, payload, request.signal, connection.operator)
+          ? await handler(endpoint, payload, request.signal, admission.peer)
           : failure('bad-request', 'Account request method does not match its endpoint')
       } catch {
         result = failure('internal', 'Account request failed')

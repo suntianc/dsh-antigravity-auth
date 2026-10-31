@@ -1,10 +1,43 @@
 import { Context } from '@deepseek-ai/cordis'
 import * as Connection from '@deepseek-ai/dsh-client-connection'
+import type { HostConnectionHandle } from '@deepseek-ai/dsh-client-connection'
 import type { CredentialProvider, CredentialRecord } from '@deepseek-ai/dsh-credentials'
 import WebServer from '@deepseek-ai/dsh-host-webserver'
 import { expect, it, vi } from 'vitest'
 import { registerAccountRoutes } from '../src/account-routes.ts'
 import { createLoopbackRpcGuard } from '../src/loopback-rpc.ts'
+
+it('passes the peer admitted for each account request and refuses a rejected admission', async () => {
+  const peer = { id: 'request-owner' }
+  let admission: { peer: typeof peer } | { rejection: 401 | 403 } = { peer }
+  const admit = vi.fn(() => admission)
+  let route: ((request: Request) => Promise<Response>) | undefined
+  const connection = {
+    admit,
+    fetch: { register: (value: { fetch: (request: Request) => Promise<Response> }) => {
+      route = value.fetch
+      return async () => {}
+    } },
+  } as unknown as HostConnectionHandle
+  const handler = vi.fn(async () => ({ ok: true as const, value: { configured: false } }))
+  const dispose = registerAccountRoutes(connection, 'antigravity-auth', ['status'], handler)
+  const makeRequest = () => new Request('http://127.0.0.1/api/antigravity-auth/status', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'client-request', rpcId: 'status-test', method: 'antigravity-auth/status', payload: {} }),
+  })
+  if (route === undefined) throw new Error('account route was not registered')
+
+  const request = makeRequest()
+  expect((await route(request)).status).toBe(200)
+  expect(admit).toHaveBeenCalledWith(request)
+  expect(handler).toHaveBeenCalledWith('status', {}, request.signal, peer)
+
+  admission = { rejection: 401 }
+  expect((await route(makeRequest())).status).toBe(401)
+  expect(handler).toHaveBeenCalledOnce()
+  await dispose()
+})
 
 it('serves authenticated account RPC on the real Connection Host and disposes its routes', async () => {
   const ctx = new Context()
@@ -40,6 +73,9 @@ it('serves authenticated account RPC on the real Connection Host and disposes it
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ type: 'server-response', rpcId: envelope.rpcId, result: { ok: true, value: { configured: false } } })
     expect(delegate).toHaveBeenCalledTimes(1)
+    const admission = ctx.connection.admit({ headers: { host: new URL(baseUrl).host, cookie: cookie! } })
+    if ('rejection' in admission) throw new Error('test browser was not admitted')
+    expect(delegate).toHaveBeenCalledWith('status', {}, expect.any(AbortSignal), admission.peer)
     expect((await send('{')).status).toBe(400)
     expect((await send(envelope, true, 'text/plain')).status).toBe(415)
     const mismatch = await send({ ...envelope, method: 'login' })

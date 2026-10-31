@@ -1,5 +1,7 @@
 # Specification: Antigravity OAuth Capability Bundle
 
+> **当前兼容性决策（Issue #42）：** 已发布插件的 DSH peer 使用 `*`，不按 DSH 版本限制安装；开发和验证依赖图固定为 DSH `0.2.1-rc.5`、Cordis `4.0.5` 与 Schemastery `3.18.5`。版本声明不代表其他 DSH 版本经过验证。本说明覆盖下文历史版本基线与范围的描述。
+
 ## Problem Statement
 
 用户希望在 DeepSeek Harness（DSH）中使用自己的 Google Antigravity 账号权益，并获得与现有 Codex capability bundle 对齐的登录、LLM、Web Search、图片生成与编辑、图片列表、用量状态和设置体验，同时增加视频理解能力。本地可缓存多个账号并手动切换当前活动账号；同一时刻只有一个账号对 LLM、Search、Image、Video 与 Quota 生效。
