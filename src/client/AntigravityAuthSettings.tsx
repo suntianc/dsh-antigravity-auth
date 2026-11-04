@@ -57,7 +57,8 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
   const [quotaBusy, setQuotaBusy] = useState(false)
   const [quotaError, setQuotaError] = useState<string | null>(null)
   const [loadState, setLoadState] = useState<LoadState>('loading')
-  const [error, setError] = useState<string | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [loginBusy, setLoginBusy] = useState(false)
   const [actionBusy, setActionBusy] = useState(false)
   const [resetTick, setResetTick] = useState(0)
@@ -75,22 +76,24 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
     const generation = ++statusGeneration.current
     if (!silent) {
       setLoadState(prev => (prev === 'ready' ? 'ready' : 'loading'))
-      setError(null)
+      setStatusError(null)
+      setActionError(null)
     }
     try {
       const result = await rpc.status(signal)
       if (signal?.aborted === true || generation !== statusGeneration.current) return
       if (!result.ok) {
         setLoadState('error')
-        setError(result.error.message || t('statusFailed'))
+        setStatusError(result.error.message || t('statusFailed'))
         return
       }
       setStatus(result.value.status)
       setLoadState('ready')
+      setStatusError(null)
     } catch (cause) {
       if (signal?.aborted === true || generation !== statusGeneration.current) return
       setLoadState('error')
-      setError(messageOf(cause, t('statusFailed')))
+      setStatusError(messageOf(cause, t('statusFailed')))
     }
   }, [rpc, t])
 
@@ -144,7 +147,8 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
   const startLogin = useCallback(async () => {
     const signal = unmountSignal()
     setLoginBusy(true)
-    setError(null)
+    setStatusError(null)
+    setActionError(null)
     try {
       if (status?.riskAcknowledged !== true) {
         await rpc.acknowledgeRisk(signal)
@@ -153,7 +157,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
       if (signal.aborted) return
       if (!result.ok) {
         await load(signal)
-        if (!signal.aborted) setError(result.error.message || t('loginFailed'))
+        if (!signal.aborted) setActionError(result.error.message || t('loginFailed'))
         return
       }
       try {
@@ -176,7 +180,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
         }
       })
     } catch (cause) {
-      if (!signal.aborted) setError(messageOf(cause, t('loginFailed')))
+      if (!signal.aborted) setActionError(messageOf(cause, t('loginFailed')))
     } finally {
       if (!signal.aborted) setLoginBusy(false)
     }
@@ -185,12 +189,13 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
   const cancelLogin = useCallback(async () => {
     const signal = unmountSignal()
     setLoginBusy(true)
-    setError(null)
+    setStatusError(null)
+    setActionError(null)
     try {
       const result = await rpc.cancelLogin(signal)
       if (signal.aborted) return
       if (!result.ok) {
-        setError(result.error.message || t('cancelLoginFailed'))
+        setActionError(result.error.message || t('cancelLoginFailed'))
         return
       }
       setStatus(previous => {
@@ -204,7 +209,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
         }
       })
     } catch (cause) {
-      if (!signal.aborted) setError(messageOf(cause, t('cancelLoginFailed')))
+      if (!signal.aborted) setActionError(messageOf(cause, t('cancelLoginFailed')))
     } finally {
       if (!signal.aborted) setLoginBusy(false)
     }
@@ -213,17 +218,18 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
   const logout = useCallback(async () => {
     const signal = unmountSignal()
     setActionBusy(true)
-    setError(null)
+    setStatusError(null)
+    setActionError(null)
     try {
       const result = await rpc.logout(signal)
       if (signal.aborted) return
       if (!result.ok) {
-        setError(result.error.message || t('logoutFailed'))
+        setActionError(result.error.message || t('logoutFailed'))
         return
       }
       await load(signal)
     } catch (cause) {
-      if (!signal.aborted) setError(messageOf(cause, t('logoutFailed')))
+      if (!signal.aborted) setActionError(messageOf(cause, t('logoutFailed')))
     } finally {
       if (!signal.aborted) setActionBusy(false)
     }
@@ -303,7 +309,8 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
           </div>
           <p className="agy-footer-notice">{t('quotaFooterNotice')}</p>
 
-          {error === null ? null : <p className="agy-alert" role="alert">{error}</p>}
+          {statusError === null ? null : <p className="agy-alert" role="alert">{statusError}</p>}
+          {actionError === null ? null : <p className="agy-alert" role="alert">{actionError}</p>}
           {status?.login.phase === 'expired' ? <p className="agy-alert" role="alert">{t('loginExpired')}</p> : null}
           {status?.login.phase === 'port-conflict' ? <p className="agy-alert" role="alert">{t('loginPortConflict')}</p> : null}
           {status?.login.phase === 'failed' ? <p className="agy-alert" role="alert">{t('loginFailed')}</p> : null}

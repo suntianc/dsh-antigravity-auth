@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AntigravityAuthSettings } from '../src/client/AntigravityAuthSettings.tsx'
@@ -338,6 +338,92 @@ describe('Antigravity bootstrap settings', () => {
     expect(screen.getByText(en.relogin)).toBeTruthy()
     unmount()
     vi.useRealTimers()
+  })
+
+  it.each([
+    ['RPC error', 'pending'],
+    ['RPC error', 'success'],
+    ['rejection', 'pending'],
+    ['rejection', 'success'],
+  ] as const)('clears a transient polling %s when status recovers to %s', async (failure, phase) => {
+    vi.useFakeTimers()
+    const pending: LoginStatusView = {
+      phase: 'pending', configured: false, projectAvailable: false,
+      authorizationUrl: `https://accounts.google.com/o/oauth2/v2/auth?state=${'a'.repeat(43)}`,
+      expiresAt: '2026-08-21T00:00:00.000Z',
+    }
+    const recovered: LoginStatusView = phase === 'pending'
+      ? pending
+      : { phase: 'success', configured: true, projectAvailable: true }
+    const rpc = rpcFixture(pending, true)
+    const status = vi.mocked(rpc.status)
+      .mockResolvedValueOnce({ ok: true, value: { status: createStatusView(true, pending) } })
+    const message = 'antigravity-auth: temporary status failure'
+    if (failure === 'RPC error') {
+      status.mockResolvedValueOnce({ ok: false, error: { code: 'internal', message, details: {} } })
+    } else {
+      status.mockRejectedValueOnce(new Error(message))
+    }
+    status.mockResolvedValue({ ok: true, value: { status: createStatusView(true, recovered) } })
+    const view = render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={() => () => {}} />)
+    try {
+      await act(async () => {})
+      expect(screen.getByRole('link', { name: en.openAuthorization })).toBeTruthy()
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+      expect(screen.getByRole('alert').textContent).toBe(failure === 'RPC error' ? message : en.statusFailed)
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+      expect(status).toHaveBeenCalledTimes(3)
+      expect(screen.queryByRole('alert')).toBeNull()
+      if (phase === 'pending') {
+        expect(screen.getByRole('link', { name: en.openAuthorization })).toBeTruthy()
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+        expect(status).toHaveBeenCalledTimes(4)
+      } else {
+        expect(screen.getByRole('button', { name: en.relogin })).toHaveProperty('disabled', false)
+        expect(screen.queryByRole('link', { name: en.openAuthorization })).toBeNull()
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+        expect(status).toHaveBeenCalledTimes(3)
+      }
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('keeps a login RPC failure visible when pending polling fails and recovers', async () => {
+    vi.useFakeTimers()
+    const rpc = rpcFixture()
+    const loginMessage = 'antigravity-auth: invalid login response from Host'
+    vi.mocked(rpc.login).mockResolvedValue({
+      ok: false, error: { code: 'internal', message: loginMessage, details: {} },
+    })
+    const view = render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={() => () => {}} />)
+    try {
+      await act(async () => {})
+      const pending = createStatusView(true, {
+        phase: 'pending', configured: false, projectAvailable: false,
+        authorizationUrl: `https://accounts.google.com/o/oauth2/v2/auth?state=${'a'.repeat(43)}`,
+        expiresAt: '2026-08-21T00:00:00.000Z',
+      })
+      vi.mocked(rpc.status).mockResolvedValue({ ok: true, value: { status: pending } })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: en.login })) })
+      expect(screen.getByRole('alert').textContent).toBe(loginMessage)
+      expect(screen.getByRole('link', { name: en.openAuthorization })).toBeTruthy()
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+      expect(screen.getByRole('alert').textContent).toBe(loginMessage)
+      const pollingMessage = 'antigravity-auth: temporary status failure'
+      vi.mocked(rpc.status).mockResolvedValueOnce({
+        ok: false, error: { code: 'internal', message: pollingMessage, details: {} },
+      })
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+      expect(screen.getByText(pollingMessage)).toBeTruthy()
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+      expect(screen.queryByText(pollingMessage)).toBeNull()
+      expect(screen.getByRole('alert').textContent).toBe(loginMessage)
+    } finally {
+      view.unmount()
+    }
   })
 
   it('aborts an in-flight status read and unsubscribes on unmount', async () => {
