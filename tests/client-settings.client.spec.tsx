@@ -73,6 +73,34 @@ afterEach(() => {
 })
 
 describe('Antigravity bootstrap settings', () => {
+  it('shows a status error and recovers after the user refreshes', async () => {
+    const rpc = rpcFixture()
+    vi.mocked(rpc.status).mockResolvedValueOnce({
+      ok: false, error: { code: 'internal', message: 'antigravity-auth: invalid status response from Host', details: {} },
+    })
+    const { unmount } = render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={() => () => {}} />)
+    expect((await screen.findByRole('alert')).textContent).toContain('invalid status response from Host')
+    expect(screen.getByRole('button', { name: en.login })).toHaveProperty('disabled', true)
+    fireEvent.click(screen.getByRole('button', { name: en.refreshStatus }))
+    await waitFor(() => expect(screen.getByRole('button', { name: en.login })).toHaveProperty('disabled', false))
+    expect(screen.queryByRole('alert')).toBeNull()
+    unmount()
+  })
+
+  it('keeps a login RPC failure visible after refreshing status', async () => {
+    const rpc = rpcFixture()
+    vi.mocked(rpc.login).mockResolvedValue({
+      ok: false, error: { code: 'internal', message: 'antigravity-auth: invalid login response from Host', details: {} },
+    })
+    const { unmount } = render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={() => () => {}} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: en.login })).toHaveProperty('disabled', false))
+    fireEvent.click(screen.getByRole('button', { name: en.login }))
+    expect((await screen.findByRole('alert')).textContent).toContain('invalid login response from Host')
+    expect(rpc.status).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: en.login })).toHaveProperty('disabled', false)
+    unmount()
+  })
+
   it('renders settings shell without secret controls and starts login directly', async () => {
     const rpc = rpcFixture()
     const unsubscribe = vi.fn()

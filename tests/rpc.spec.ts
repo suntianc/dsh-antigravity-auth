@@ -27,6 +27,44 @@ function loginFixture() {
 }
 
 describe('Antigravity login RPC', () => {
+  it('accepts the Host-generated login URL and subsequent pending status through the browser client', async () => {
+    const service = createBootstrapStatusService({
+      flowOptions: { listenerFactory: { listen: vi.fn(async () => ({ close: vi.fn(async () => {}) })) } },
+    })
+    const client = createAntigravityAuthRpcClient({
+      call: async (_channel, endpoint, payload, signal) => handleAntigravityAuthRpc(
+        service, endpoint.replace('antigravity-auth/', ''), payload, signal,
+      ),
+    })
+    try {
+      await client.acknowledgeRisk()
+      const login = await client.login()
+      expect(login.ok).toBe(true)
+      if (!login.ok) throw new Error('Host-generated login URL was rejected')
+      expect(new URL(login.value.authorizationUrl).searchParams.get('prompt')).toBe('select_account consent')
+      await expect(client.status()).resolves.toMatchObject({
+        ok: true,
+        value: { status: { login: { phase: 'pending', authorizationUrl: login.value.authorizationUrl } } },
+      })
+    } finally {
+      await service.dispose()
+    }
+  })
+
+  it.each(['consent', 'select_account consent'])('accepts the supported OAuth prompt %s', async prompt => {
+    const rpc = { call: vi.fn().mockResolvedValue({ ok: true, value: {
+      ...loginFixture(), authorizationUrl: `${loginFixture().authorizationUrl}&prompt=${encodeURIComponent(prompt)}`,
+    } }) }
+    await expect(createAntigravityAuthRpcClient(rpc).login()).resolves.toMatchObject({ ok: true })
+  })
+
+  it.each(['none', 'select_account', 'consent unexpected', 'select_account consent unexpected'])('rejects unsupported OAuth prompt %s', async prompt => {
+    const rpc = { call: vi.fn().mockResolvedValue({ ok: true, value: {
+      ...loginFixture(), authorizationUrl: `${loginFixture().authorizationUrl}&prompt=${encodeURIComponent(prompt)}`,
+    } }) }
+    await expect(createAntigravityAuthRpcClient(rpc).login()).resolves.toMatchObject({ ok: false })
+  })
+
   it('returns value-free plugin, login, and gate status', async () => {
     const result = await request('status', {})
 

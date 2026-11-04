@@ -353,6 +353,7 @@ function isSafeAuthorizationUrl(value: unknown): value is string {
     const state = parsed.searchParams.get('state')
     const clientId = parsed.searchParams.get('client_id')
     const challenge = parsed.searchParams.get('code_challenge')
+    const prompt = parsed.searchParams.get('prompt')
     return parsed.protocol === 'https:'
       && parsed.hostname === 'accounts.google.com'
       && parsed.port === ''
@@ -368,7 +369,7 @@ function isSafeAuthorizationUrl(value: unknown): value is string {
       && (parsed.searchParams.get('redirect_uri') === null || parsed.searchParams.get('redirect_uri') === 'http://localhost:51121/oauth-callback')
       && (parsed.searchParams.get('code_challenge_method') === null || parsed.searchParams.get('code_challenge_method') === 'S256')
       && (parsed.searchParams.get('access_type') === null || parsed.searchParams.get('access_type') === 'offline')
-      && (parsed.searchParams.get('prompt') === null || parsed.searchParams.get('prompt') === 'consent')
+      && (prompt === null || prompt === 'consent' || prompt === 'select_account consent')
   } catch {
     return false
   }

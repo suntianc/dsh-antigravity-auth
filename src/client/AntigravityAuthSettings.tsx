@@ -57,7 +57,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
   const [quotaBusy, setQuotaBusy] = useState(false)
   const [quotaError, setQuotaError] = useState<string | null>(null)
   const [loadState, setLoadState] = useState<LoadState>('loading')
-  const [_error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [loginBusy, setLoginBusy] = useState(false)
   const [actionBusy, setActionBusy] = useState(false)
   const [resetTick, setResetTick] = useState(0)
@@ -152,8 +152,8 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
       const result = await rpc.login(signal)
       if (signal.aborted) return
       if (!result.ok) {
-        setError(result.error.message || t('loginFailed'))
         await load(signal)
+        if (!signal.aborted) setError(result.error.message || t('loginFailed'))
         return
       }
       try {
@@ -303,6 +303,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
           </div>
           <p className="agy-footer-notice">{t('quotaFooterNotice')}</p>
 
+          {error === null ? null : <p className="agy-alert" role="alert">{error}</p>}
           {status?.login.phase === 'expired' ? <p className="agy-alert" role="alert">{t('loginExpired')}</p> : null}
           {status?.login.phase === 'port-conflict' ? <p className="agy-alert" role="alert">{t('loginPortConflict')}</p> : null}
           {status?.login.phase === 'failed' ? <p className="agy-alert" role="alert">{t('loginFailed')}</p> : null}
