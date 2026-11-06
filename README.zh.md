@@ -1,128 +1,42 @@
 # dsh-antigravity-auth
 
-> **DSH 兼容性：** `0.1.5` 不限制 DSH 版本范围，开发测试基线为 DSH `0.2.1-rc.5`；这些检查未验证其他版本。见[验证说明](docs/dsh-source-verification.md)。
-
-[![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
+[![npm version](https://img.shields.io/npm/v/dsh-antigravity-auth.svg)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) | 中文
 
-发布版本：**v0.1.5**（npm 标签：`latest`）。
+在 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 中使用 Antigravity 账号，接入语言模型、网页搜索、图片创作和实验性视频理解，共享登录态与用量面板。支持本地缓存多个账号并手动切换，**同一时刻只有一个活动账号**。
 
-这是一个自包含的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-**Antigravity 能力包**。它集成了 Antigravity 的私有 OAuth 登录态与 Wire Identity 线路身份，提供：
+> **非官方、实验性，仅供个人使用。** Google 不支持第三方 Antigravity 登录工具，账号可能被暂停或终止。登录前请阅读 [Google FAQ](https://antigravity.google/docs/faq/) 和 [Additional Terms](https://antigravity.google/terms)。私有接口可能随时变更或失效，请勿用于生产工作负载。
 
-- `google-antigravity` LLM 路由（Gemini 3.8/3.7/3.6 Flash、Gemini 3.1 Pro、Claude Opus、Claude Sonnet、GPT-OSS）；
-- 接入 DSH 内置 `web_search` 工具的全局 Antigravity 搜索提供方；
-- 通过 `generate_image` 实现持久图片生成与编辑，并提供供模型使用的 `list_images` 目录；
-- 支持本地工作区 MP4 文件的多模态 `analyze_video` 视频理解；
-- 具备优雅动效的 5 小时与每周用量/配额可视化仪表盘；
-- 一个原生 **Antigravity Auth** 设置分区，内含「登录」「网页搜索」「图片创作」「视频理解」四张卡片。
+**当前版本：**`0.1.5`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
 
-设置分区跟随 DSH 界面语言切换中英文，覆盖功能描述、状态标签、功能开关名称和配额刷新提示。
+[快速开始](#快速开始) · [使用各项能力](#使用各项能力) · [账号命令](#账号命令) · [常见问题](#常见问题) · [开发](#开发)
 
-> **⚠️ 非官方通道——仅限个人开发。** 私有、受账户权限控制的 Antigravity
-> 后端服务未获官方支持、可随时撤销，也可能在没有通知的情况下被限流或变更。请勿依赖它承载生产任务。
+## 功能概览
 
-## 0.1.5：登录响应与错误恢复修复
+| 能力 | DSH 入口 |
+| --- | --- |
+| 语言模型 | 模型选择器中的 `google-antigravity`，包含 Gemini、Claude、GPT-OSS 路由，实际可用性取决于账号 |
+| 网页搜索 | 内置 `web_search` 工具的 `antigravity` 搜索提供方 |
+| 图片生成与编辑 | `generate_image`，以及查看会话已保存图片的 `list_images` |
+| 实验性视频理解 | `analyze_video`，读取当前工作区内的 MP4 文件 |
+| 账号与额度 | **设置 → Antigravity**，显示 5 小时及每周额度，界面随 DSH 切换中英文 |
 
-接受 Host 正常生成的 OAuth 授权链接，让登录按钮可以打开 Google 授权页并显示手动链接。状态和账号操作错误会明确显示；轮询恢复后会清除暂时错误，同时保留登录失败提示。新增回归覆盖浏览器打开受阻、取消和再次登录。DSH `0.2.1-rc.5` 基线保持不变。发布缺口的证据与验证范围见 [issue #43 排查记录](docs/research/issue-43-desktop-login.md)。
+## 快速开始
 
-## 0.1.4：适配 DSH 0.2.1
+### 1. 确认环境
 
-开发测试依赖图升级至 DSH `0.2.1-rc.5`，账号 RPC 转发当前请求通过认证的身份，网页搜索保留 Host 的提供方选择。DSH peer 不设版本范围，安装不会仅因 Host 版本被拦截；这不代表未经验证的版本一定可用。完整包检查和固定源码检查已通过，并在隔离 Web Host 中验证未登录状态接口；没有发起真实 OAuth 或私有接口请求。
-
-## 0.1.4-rc.6：适配 DSH 0.2.0-rc.2 与选择保持修复
-
-此版本将最低及已测试的 DSH 依赖图升级到 `0.2.0-rc.2`，并保留既有凭据隔离、历史重放与取消行为。同时隔离 Host 测试 fixture 与真实 profile 数据，增加 `google` 提供方别名，规范化 Antigravity project ID，并在自动注册时保留用户明确选择的 `deepseek-official` 网页搜索提供方。完整包检查与固定源码检查已通过；真实账号和私有传输尚未验证。
-
-## 0.1.4-rc.5：适配 DSH 0.2.0-rc.1
-
-此版本更新 DSH 依赖图，使用 Config Forms 与 volatile 配置注册功能控制项，向 Connection RPC 传入新版 operator，并将 V4 `tool` 角色消息映射到提供商历史。账号路由保留 Host 侧回环限制。完整包检查与固定源码检查已通过；真实账号和私有传输尚未验证。
-
-## 0.1.4-rc.4：并发搜索取消修复
-
-修复 #35：并发 `web_search` 中一条查询失败后，取消其余等待中的请求不会再触发无人处理的 TLS socket 错误，导致 DSH Host 退出。
-
-## 0.1.4-rc.3：Gemini 工具调用 ID 复用修复
-
-修复 #33：Gemini 在后续调用中复用已完成调用的 ID 时，会话可以继续。前一次调用尚未返回结果时的 ID 复用、无法配对的结果仍明确报错；Claude 与 GPT-OSS 保留现有校验。
-
-## 0.1.4-rc.2：账号切换与 Gemini 历史重放修复
-
-- 通过 `/antigravity-auth` 或 `/anti` 缓存并手动切换本地账号，同一时刻只有一个活动账号。
-- 刷新、登出和撤销的迟到结果绑定原凭据，保留其他账号及其能力状态。
-- 修复 Gemini thinking/tool signature 历史重放和尾部空文本帧；容量重试仅用于 HTTP 503。
-- LLM 错误显示安全的失败分类和 HTTP 状态。DSH 兼容基线继续为 `0.1.5-rc.1`。
-
-## 0.1.4-rc.1：DSH 0.1.5-rc.1 适配
-
-开发依赖、peer 范围、打包检查与对应源码验证目标统一升级至 DSH `0.1.5-rc.1`；离线测试继续覆盖认证、模型、搜索和媒体契约。
-
-开发基线升级到 DSH `0.1.5-rc.1`。Gemini 与 Claude 将 V3 system message 文本保留到 `systemInstruction`；单次调用的 `options.system` 作为前置指令，后接按原顺序排列的系统消息。账号操作迁移到经过认证的 `/api/antigravity-auth/*`，保留原有静态 loopback 限制。终端命令名称不变。
-
-## v0.1.4-alpha.5 重点更新
-
-- 将开发依赖图与 peer 基线迁移到 DSH `0.1.2-alpha.5`，采用当前 Settings、Session、Connection、client injection 与 `ToolCallId` API；本仓库 lockfile 不含旧 DSH 包族。
-- 新增经过登录态目录确认的 Gemini 3.8 Flash，默认 Medium，并使用抓取的 Low/Medium/High route、model enum 与 numeric thinking budget。
-- 所有私有 Cloud Code `v1internal:` 操作重新对齐已审计的 AGY CLI 1.1.24 wire identity，同时保留强制、真实的 DSH 二级归因。
-- 排空成功的 provider terminal SSE framing 与 body，并改用 cancellation-safe async-iterable Web Stream bridge，避免 Node `ERR_INVALID_STATE` 崩溃。
-- 在 alpha.5 上保持账号 RPC fail-closed：只有明确绑定 `127.0.0.1` 的 Web Host 才能触达认证服务。
-
-## 功能特性
-
-### 共享 Antigravity 登录态
-
-- LLM、搜索、图片、视频与配额操作共用一个仅运行于 Host 的认证协调器。
-- 直连 OAuth 2.0 PKCE S256 流程：Host 内存生成 verifier 与 state 句柄，浏览器仅接收授权链接，密钥绝不跨越 Host 边界。
-- 回调监听器仅绑定 `127.0.0.1:51121`，只接受一次性的已注册 code/state 凭据对。
-- 通过属主权限文件存储（POSIX `0600`；Windows 用户数据目录 ACL）、短时内存缓存解析凭证，并在到期前主动刷新。
-- 进程内合并并发刷新请求；仅在账号与 lineage 未变化时原子提交新 token。
-- 仪表盘实时显示连接状态以及 Gemini 与 Claude/GPT 模型家族的 5 小时和每周额度进度条。
-- `/antigravity-auth` 绝不向前端泄露 token。DSH alpha.5 下，真实账号 dispatcher 只在明确的 `127.0.0.1` Web bind 上启用；缺失、all-interface 或未知 bind 只能得到不含状态的安全拒绝。
-
-### LLM 路由与模型发现
-
-- 通过 DSH 公开的 `LlmAdapter` 接口注册 `google-antigravity` 提供方。
-- 将已审计的 `@cortexkit/antigravity-auth-core@2.2.0` 固定社区模型快照与真实登录账号的可用模型取交集，并规范化服务端返回的 `gemini-3.8-flash-tiered` 目录别名；Gemini 3.8 Flash 使用 AGY 1.1.24 抓取的 Low/Medium/High wire route、numeric thinking budget、model enum、`userAgent` envelope 字段与 Medium 默认档位。
-- 当真实模型发现暂时不可用或发生协议漂移时，DSH 内置模型选择器会回退到固定文本模型快照，设置页仍诚实显示 live catalog 状态；该 advisory 降级可能暂时保留 Gemini 3.5 Flash 等旧路由，而成功的 live intersection 会过滤账号目录中不存在的路由。成功但零交集的结果仍保持为空，未登录、授权拒绝、取消与明确的 attribution 拒绝仍保持 fail-closed。
-- 流式传输支持首个数据块前的一次认证重放，并支持跨分片提供方函数名的 call-id 稳定关联；成功的 terminal event 会先排空剩余 SSE framing 再向 DSH 完成流，必要的取消路径则使用 Node 的 async-iterable Web Stream bridge，避开存在竞态的 `Readable.toWeb()` 适配器。
-
-### 网页搜索
-
-`antigravity-search` Host 行通过 `@deepseek-ai/dsh-web` 注册 ID 为 `antigravity` 的全局搜索提供方。基于审计过的 Wire Identity 线路分发请求，返回真实 grounding 来源与去重检验过的 HTTP(S) 链接。
-
-搜索提供方由 DSH 选择。存在多个可用提供方时，请在 Host 的网页搜索配置中选择 `antigravity`；插件不会覆盖已有选择。
-
-### 图片创作与编辑
-
-`generate_image` 为模型提供统一操作接口，分发至 Antigravity 图片端点：
-
-- 支持提示词、最多 5 个显式参考图（会话句柄 `image:<id>` 或工作区路径）及尺寸/比例选项。
-- 返回的图片字节经过格式校验、解码、Magic bytes 签名验证并通过 `AttachmentStore` 持久保存。
-- `list_images` 提供会话持久图片分页目录，供多模态模型查看。
-
-### 视频理解
-
-多模态 `analyze_video` 工具支持本地工作区 MP4 视频的帧采样与内容文本理解。
-
-### 用量与配额可视化仪表盘
-
-- 直观展示 5 小时窗口与每周窗口的剩余配额比例与刷新倒计时。
-- 剩余时间达到 24 小时后按天、小时、分钟显示，例如 `94h 43m` 显示为 `3天 22h 43m`（英文为 `3d 22h 43m`）；不足一天继续使用原有小时/分钟格式。
-- 状态三档配色：充足（>60%，翡翠绿）、预警（30%–60%，警示橙）、紧急（<30%，警示红）。
-- 配备 Shimmer 微光流动轨道、微型 Spinner 与平滑展开动画。
-
-## 环境要求（当前源码）
-
-- DeepSeek Harness `0.2.1-rc.5`（统一依赖图；npm 与对应源码制品分别验证）。
-- Node.js `^22.19.0` 或 `>=24.0.0`。
-- `PATH` 中可用 `pnpm`（本项目测试版本为 `11.7.0`）。
+- 已安装并能运行 DSH。当前测试开发基线为 **DSH `0.2.1-rc.5`**。
+- Node.js `^22.19.0` 或 `>=24.0.0`，`PATH` 中可用 `pnpm`（本项目测试版本为 `11.7.0`）。
 - 具有 Antigravity 权限的 Google 账号。
+- 可在本地 Host 上打开浏览器完成 OAuth。Web 账号操作要求 Host 的 WebServer 明确绑定 **`127.0.0.1`**；临时 OAuth 回调使用 **`127.0.0.1:51121`**。
 
-## 安装（已发布版本）
+本包不限制 DSH peer 版本范围，其他版本可以尝试安装，但这**不代表已经验证兼容**。详见[验证范围](docs/dsh-source-verification.md)。
 
-先停止 `dsh web`，再将最新发布版安装到目标 profile：
+### 2. 安装或升级
+
+先停止使用目标 profile 的 Host，再执行：
 
 ```sh
 dsh --version
@@ -130,81 +44,82 @@ dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.5
 dsh plugin --profile web list
 ```
 
-核对条目后重启 `dsh web` 并刷新浏览器。示例使用 `web` profile；请按实际情况替换为 `desktop` 等目标 profile。
+将 `web` 替换为实际使用的 profile，例如 `desktop`。核对列表中的版本，重启对应 Host（Web profile 使用 `dsh web`），然后刷新客户端。
 
-## 终端登录命令
+### 3. 登录
 
-在提供 DSH `commands` 缝的交互界面上，本 bundle 会注册 `antigravity-auth` slash 命令，作为 Web 设置卡片的替代入口：
+1. 打开 **设置 → Antigravity**，点击**开始 Antigravity 登录**。启动登录会记录对上述非官方通道风险的确认。
+2. 在 Host 所在机器的浏览器中完成 Google 授权。若新标签页被拦截，点击设置卡片中的**打开 Google 授权页面**。
+3. 回到 DSH 检查登录结果，用 `/anti status` 查看详细能力状态。若授权过期，取消后重试或重新发起登录。
+4. 选择可用的 `google-antigravity` 模型，并在 Antigravity 设置卡片中启用需要的搜索、图片或视频能力。
 
-```text
-/antigravity-auth              # 查看当前登录状态（默认）
-/antigravity-auth accounts     # 列出本地缓存的账号
-/antigravity-auth switch <id>  # 按序号、id 或邮箱激活缓存账号
-/antigravity-auth login        # 启动 Google OAuth 授权流程
-/antigravity-auth cancel       # 取消进行中的授权
-/antigravity-auth logout       # 登出当前账号并删除其缓存凭据
-/antigravity-auth remove <id>  # 删除一个缓存账号（若为当前账号则同时登出）
-```
+这些能力需要已登录账号和可用项目。正常运行的 Host 会自动激活账号的能力门禁，但这**不等于逐项完成模型或工具的在线验证**。实际可用性仍取决于账号和私有后端；灰色的开关还需要可写的 Host 设置范围。
 
-`/anti` 是同一条命令。成功的 `login` 会把新凭据写入本地账号缓存（`accounts.json`），并把它设为 `auth.json` 中的活动账号。同一时刻只有一个账号处于活动状态；其余 refresh token 会留在磁盘上，直到对该账号执行 `logout` 或 `remove`。`logout` 与 Web 上的显式撤销会清空 Host 内存和 `auth.json`，然后只删除**启动该操作的那个账号**。若 coordinator 将撤销标记为 `superseded`（例如在 Google 撤销请求进行期间切换了账号），则不会删除新的活动账号。刷新令牌轮换与可选的 userinfo 邮箱回填绑定到操作开始时捕获的账号身份，而不是显示用邮箱，也不是结果返回时恰好处于活动状态的账号。
+终端登录方式见[账号命令](#账号命令)。
 
-账户操作面向本地终端登录入口：在无 DSH WebServer、或显式绑定 `127.0.0.1` 的本地 Host 上执行；仅当 WebServer 在其它网卡上暴露共享的 `commands` 缝时，命令才会在不触碰认证服务的前提下被拒绝。账户 RPC 仍保留其更严格的 ADR-0008 守卫（真实 dispatcher 仅挂在显式 `127.0.0.1` bind 上）。
+## 使用各项能力
 
-`login` 会确认非官方通道的风险提示，并启动 loopback OAuth 流程——其临时回调监听器绑定在 `127.0.0.1:51121`，与任何 DSH WebServer 相互独立。随后命令会用尽力而为的平台浏览器开启器打开 Google 登录页；授权链接**不会**被回显到命令结果中，因为 `CommandResult.text` 会被原样写入会话的 `command/done` 事件，而该链接携带 OAuth state 句柄与 PKCE challenge。在 Windows 上开启器为 `cmd /c start "" "<url>"`：URL 带引号且禁用 Node 的参数改写，因此以 `&` 分隔的每个 OAuth 参数都会完整到达浏览器。若开启器无法启动，命令会如实报告该失败且不复现 URL。请在浏览器中完成登录，然后运行 `/antigravity-auth status`。Token、verifier、授权码与回调 URL 绝不会出现在命令输出或会话日志中。DSH 未提供供插件使用的公开瞬时展示/浏览器唤起 API，因此在没有桌面浏览器的 Host 上，无法从终端完成交互式登录。
+- **模型：**在 DSH 模型选择器中选择 `google-antigravity`。当 `google` 尚未被其他提供方占用时，插件也会注册该别名。实时发现会筛选固定模型目录；临时发现失败时，选择器可能显示仅供参考的快照，并非已确认的账号可用列表。
+- **搜索：**安装了多个搜索提供方时，在 Host 的**网页搜索**配置中选择 `antigravity`。仅打开 Antigravity 卡片开关不会替换 DSH 已选提供方。之后可通过内置 `web_search` 获取带来源链接的搜索结果。
+- **图片：**让 DSH 生成图片，或编辑明确指定的会话图片（`image:<id>`）/工作区图片。`generate_image` 接收提示词、最多 **5 张参考图**、可选模型，每次可请求 **1–4 张图片**（`n`）；部分成功时可能少于请求数量，并返回警告。图片作为会话附件保存，可用 `list_images` 查找。目前没有独立的尺寸、宽高比、画质或透明背景参数。
+- **视频：**为 `analyze_video` 提供当前工作区内的 MP4 路径和问题。文件默认及最大上限为 **32 MiB**，不接受远程 URL、工作区外路径或符号链接。工具会直接将 MP4 提交给私有接口，不在本地抽帧。这是实验性 POC，不保证完整的视频、音频或时间轴理解。
+- **额度：**在 Antigravity 设置面板查看 5 小时/每周剩余额度与重置时间。查询不可用或被限流会显示相应状态，不会当作零用量。
 
-## Host 配置
+## 账号命令
 
-能力包 patch 按依赖顺序启用独立的 Host 行：
-
-| 行 | Export | 作用 |
-|---|---|---|
-| `antigravity-auth` | `dsh-antigravity-auth` | 共享认证协调器与 LLM 路由 |
-| `antigravity-search` | `dsh-antigravity-auth/search` | 全局搜索提供方 |
-| `antigravity-image` | `dsh-antigravity-auth/image` | 图片生成与编辑工具 |
-| `antigravity-video` | `dsh-antigravity-auth/video` | 视频理解工具 |
-
-## Wire Identity（线路身份）
-
-Wire Identity 模块保留已审计的 AGY CLI 1.1.24 content-request User-Agent，并调用 DSH 公开的 `attributionHeaders()` formatter，把真实 DSH 身份放入强制二级 carrier：
+在支持 slash 命令的 DSH 交互界面中，`/anti` 与 `/antigravity-auth` 等价：
 
 ```text
-X-DeepSeek-Harness-Attribution: deepseek-harness/<version> (+repository-url)
+/anti status       # 查看登录与能力状态（也是默认动作）
+/anti login        # 发起 Google OAuth，并激活登录的账号
+/anti cancel       # 取消进行中的登录
+/anti accounts     # 列出本地缓存账号
+/anti switch <id>  # 按账号序号、id 或邮箱切换
+/anti logout       # 本地登出，并删除当前账号的缓存凭据
+/anti remove <id>  # 删除缓存账号，使用剩余账号；无剩余账号时登出
 ```
 
-请求端点由代码固定：仅接受受信任的 HTTPS Antigravity origin 与枚举的 `v1internal:` 操作路径。
+- 登录成功后，账号缓存保存在 `accounts.json`，当前账号保存在 `auth.json`。其他缓存账号会保留，直到显式删除。不提供自动轮换或额度池。
+- 本地登出只删除该账号的本地凭据，不撤销 Google grant。删除活动缓存账号后，可能启用另一个剩余账号；没有剩余账号时才登出。
+- 命令可用于未运行 WebServer 的本地 Host，或 WebServer 明确绑定 `127.0.0.1` 的 Host；共享命令接口暴露在其他地址时会被拒绝。
+- 终端登录会打开 Host 上的浏览器，不会把授权链接打印到持久保存的会话输出中。没有可用浏览器的无头 Host 无法完成这一步交互。浏览器授权后运行 `/anti status` 查看结果。
 
-## 安全与限制
+## 常见问题
 
-- token 值绝不进入前端、设置、日志、会话事件或工具 metadata，仅在 Host 侧发起私有请求时附带认证 header。
-- auth、gate evidence 与受控 live image 文件在 POSIX 上严格校验属主 mode；Windows 由 ACL 管理访问权限，因此不把合成的 POSIX group/other bits 作为访问判据，但仍执行 symlink、文件类型、大小、schema 与内容校验。
-- 本地多账号缓存与手动切换：`accounts.json` 可保存多个 refresh token，`auth.json` 只保存当前活动记录。不提供额度池、自动账号轮换、身份回退或 fingerprint regeneration。
-- 本地登出会清空 Host 内存和 `auth.json`，并删除该账号的缓存凭据，因此无法再用 `switch` 恢复。其余缓存账号保留。撤销是独立的显式动作，清理范围同样只覆盖启动该操作的账号；`superseded` 不能授权删除另一个活动账号。
-- 旧账号的刷新、登出或撤销仍在等待时切换账号，会保留新账号的凭据与能力状态。迟到的清理只针对原凭据，不会删除该账号后来重新登录的凭据。
-- DSH alpha.5 不再提供逐 method 或 Host 侧 carrier authority。插件只在公开 WebServer bind 恰为 `127.0.0.1` 时启用真实 account RPC；缺失、all-interface 与未知 bind 只返回 `loopback-required`。浏览器在 `ConnectionHandle.isLoopback` 为 false 时也不会注册该设置分区，但该客户端提示仅用于 UX：在 DSH 提供对应 Host 侧事实前，owner-contained 自定义 carrier 仍不能获得授权。
-- 原始多媒体 base64 绝不注入会话正文或前端 RPC。
+| 现象 | 排查方法 |
+| --- | --- |
+| 找不到设置区，或出现 `loopback-required` | 确认插件装在当前运行的 profile，重启 Host 并刷新客户端。账号 RPC 要求 WebServer 明确绑定 `127.0.0.1`，仅客户端 URL 看起来是本机地址还不够；非 loopback 连接会隐藏设置区。 |
+| 登录没有打开浏览器 | 点击设置中的**打开 Google 授权页面**。若一直没有链接，查看页面错误，并确认安装版本为 `0.1.5` 或更新版本。终端命令没有打印链接的备用方式。 |
+| 回调端口被占用，或授权过期 | 确认占用 `127.0.0.1:51121` 的进程，仅在安全时关闭它，再重新登录。过期或已取消的授权链接不能复用。 |
+| 已登录，但能力不可用 | 检查项目是否可用、能力状态、启用开关和 Host 设置范围。登录成功不代表后端支持所有能力。 |
+| 搜索仍使用其他提供方 | 将 Host 的网页搜索提供方设为 `antigravity`；插件会保留已有选择。 |
+| `invalid_grant` / 要求登录、HTTP 403 或 HTTP 429 | 授权失效或撤销后重新登录；403 检查账号权限；429 等待额度或限流恢复。插件不会自动切换账号绕过限制。 |
+| `protocol-drift`、视频不受支持或模型异常 | 私有接口可能已变更。查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [Issues](https://github.com/suntianc/dsh-antigravity-auth/issues)。反馈时提供插件/DSH 版本、系统及安全的错误码或 HTTP 状态，不要附带凭据或 OAuth 链接。 |
 
-## 本地开发
+## 安全与边界
 
-维护者发布时请遵循[发布规范](docs/release-policy.md)和 [Release 正文模板](docs/release-notes.template.md)，统一标题、中英文说明、发布通道与完成核验。
+- OAuth 使用 PKCE S256 和临时 loopback 回调。Token 留在 Host，不进入浏览器、设置、日志或工具 metadata。
+- 本地账号文件含 refresh token，请妥善保护：POSIX 使用属主权限，Windows 使用用户数据目录 ACL。反馈问题时不要分享 `auth.json`、`accounts.json`、授权/回调 URL 或原始媒体数据。
+- 刷新、切换、登出和撤销操作绑定发起时的账号，迟到的结果不会覆盖其他活动账号。
+- 私有请求仅访问固定允许的端点，并通过 `X-DeepSeek-Harness-Attribution` 保留真实 DSH 身份。这是传输兼容机制，不能消除账号受限风险。
+- 插件使用 DSH 公开扩展接口，不替换 DSH core，不提供自动账号轮换或生产支持。
+
+## 开发
 
 ```sh
-pnpm install
-pnpm peers check
-pnpm test
+pnpm install --frozen-lockfile
 pnpm run check
 ```
 
-`pnpm run build` 生成：
+`check` 包含 peer 检查、lint、类型检查、离线测试、Host/client 构建、包冒烟检查和 publint。真实 OAuth 与私有接口检查需要单独显式启用；离线通过不能证明真实账号可用。
 
-- `lib/index.js`：认证 / LLM Host 插件；
-- `lib/search.js`：搜索 Host 插件；
-- `lib/image.js`：图片 Host 插件；
-- `lib/video.js`：视频 Host 插件；
-- `lib/quota.js`：配额 Host 插件；
-- `lib/wire-identity.js`：Wire Identity 线路身份模块；
-- `lib/client.cjs`：浏览器设置端插件；
-- `lib/types/**`：TypeScript 类型声明。
+[Bundle patch](cordis.patch.yml) 安装四个 Host 行：`antigravity-auth`（共享认证与 LLM）、`antigravity-search`、`antigravity-image` 和 `antigravity-video`。
 
-## 友情链接
+- [对应 DSH 源码验证](docs/dsh-source-verification.md)
+- [设计规范](docs/specs/antigravity-auth-capability-bundle.md)与[研究记录](docs/research/antigravity-auth-plugin.md)
+- [发布规范](docs/release-policy.md)与 [Release 模板](docs/release-notes.template.md)
+- [更新日志](CHANGELOG.md) · [GitHub Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) · [反馈问题](https://github.com/suntianc/dsh-antigravity-auth/issues)
 
-- [LINUX DO (L 站)](https://linux.do/)
+## 许可与社区
+
+[MIT](LICENSE) · [LINUX DO（L 站）](https://linux.do/)
