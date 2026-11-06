@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH 兼容性：** `0.1.4` 不限制 DSH 版本范围，开发测试基线为 DSH `0.2.1-rc.5`；这些检查未验证其他版本。见[验证说明](docs/dsh-source-verification.md)。
+> **DSH 兼容性：** `0.1.5` 不限制 DSH 版本范围，开发测试基线为 DSH `0.2.1-rc.5`；这些检查未验证其他版本。见[验证说明](docs/dsh-source-verification.md)。
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 [English](README.md) | 中文
 
-发布版本：**v0.1.4**（npm 标签：`latest`）。
+发布版本：**v0.1.5**（npm 标签：`latest`）。
 
 这是一个自包含的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity 能力包**。它集成了 Antigravity 的私有 OAuth 登录态与 Wire Identity 线路身份，提供：
@@ -23,6 +23,10 @@
 
 > **⚠️ 非官方通道——仅限个人开发。** 私有、受账户权限控制的 Antigravity
 > 后端服务未获官方支持、可随时撤销，也可能在没有通知的情况下被限流或变更。请勿依赖它承载生产任务。
+
+## 0.1.5：登录响应与错误恢复修复
+
+接受 Host 正常生成的 OAuth 授权链接，让登录按钮可以打开 Google 授权页并显示手动链接。状态和账号操作错误会明确显示；轮询恢复后会清除暂时错误，同时保留登录失败提示。新增回归覆盖浏览器打开受阻、取消和再次登录。DSH `0.2.1-rc.5` 基线保持不变。发布缺口的证据与验证范围见 [issue #43 排查记录](docs/research/issue-43-desktop-login.md)。
 
 ## 0.1.4：适配 DSH 0.2.1
 
@@ -122,7 +126,7 @@
 
 ```sh
 dsh --version
-dsh plugin --profile web add dsh-antigravity-auth
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.5
 dsh plugin --profile web list
 ```
 

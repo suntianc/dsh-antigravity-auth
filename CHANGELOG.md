@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-06
+
+- Accept the Host-generated OAuth `select_account consent` prompt so login can open the Google authorization page and show its manual link, addressing a released-package defect consistent with #43.
+- Display status and account-action failures, keep login failures visible across status refreshes, and clear transient polling errors after recovery.
+- Add a Host-to-settings regression for blocked or throwing browser openers, cancellation, fresh login retries and listener cleanup. Keep the DSH `0.2.1-rc.5` development baseline unchanged.
+
 ## [0.1.4] - 2026-10-30
 
 - Verify the plugin against the coherent DSH `0.2.1-rc.5` graph and forward the admitted request peer for account RPC.

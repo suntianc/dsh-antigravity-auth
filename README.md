@@ -1,13 +1,13 @@
 # dsh-antigravity-auth
 
-> **DSH compatibility:** Version `0.1.4` declares no DSH version range restriction. Its tested development baseline is DSH `0.2.1-rc.5`; other versions have not been verified by these checks. See [verification](docs/dsh-source-verification.md).
+> **DSH compatibility:** Version `0.1.5` declares no DSH version range restriction. Its tested development baseline is DSH `0.2.1-rc.5`; other versions have not been verified by these checks. See [verification](docs/dsh-source-verification.md).
 
 [![npm rc version](https://img.shields.io/npm/v/dsh-antigravity-auth/rc.svg?label=npm%20rc)](https://www.npmjs.com/package/dsh-antigravity-auth)
 [![awesome · DSH plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 English | [中文](README.zh.md)
 
-Release: **v0.1.4** (npm tag: `latest`).
+Release: **v0.1.5** (npm tag: `latest`).
 
 A self-contained [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 **Antigravity Capability Bundle**. It integrates Antigravity's private OAuth session
@@ -26,6 +26,10 @@ The settings section follows the DSH interface language (English or Chinese), in
 > account-gated Antigravity backend surface is unsupported, revocable, and
 > may be rate-limited or changed without notice. Do not rely on it for
 > production workloads.
+
+## 0.1.5: login response and error recovery
+
+Accepts the Host-generated OAuth authorization URL so the login button can open the Google authorization page and show a manual link. Status and account-action errors are now visible; recovered polling errors clear without hiding login failures. Regression coverage includes blocked browser opening, cancellation and another login attempt. The DSH `0.2.1-rc.5` baseline is unchanged. See the [issue #43 investigation](docs/research/issue-43-desktop-login.md) for the release-gap evidence and verification limits.
 
 ## 0.1.4: DSH 0.2.1 compatibility
 
@@ -130,7 +134,7 @@ Stop `dsh web`, then install the latest release into the intended profile:
 
 ```sh
 dsh --version
-dsh plugin --profile web add dsh-antigravity-auth
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.5
 dsh plugin --profile web list
 ```
 

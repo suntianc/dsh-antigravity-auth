@@ -78,7 +78,8 @@ the existing fixes is the next delivery step; reinstalling unchanged npm
 `latest` cannot supply them. Then verify the reporter's actual plugin version
 and ask for an OS-specific follow-up only if the failure remains.
 
-No live account, real OAuth exchange, private endpoint, user profile, packaged
-Desktop execution, commit, push, issue comment, PR, release or publication was
-performed. Changes in this investigation are limited to the regression test
-and this report.
+During the initial investigation, no live account, real OAuth exchange, private
+endpoint, user profile, packaged Desktop execution, commit, push, issue comment,
+PR, release or publication was performed. Its changes were limited to the
+regression test and this report. Subsequent release preparation is tracked in
+the versioned changelog and release notes.
