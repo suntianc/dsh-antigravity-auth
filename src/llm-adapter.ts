@@ -558,6 +558,18 @@ function cleanModelDisplayName(name: string): string {
 
 function getModelReasoningEfforts(modelId: string): { efforts: readonly { id: ReturnType<typeof ReasoningEffortId>; name: string }[]; defaultEffort: ReturnType<typeof ReasoningEffortId> } | undefined {
   const lower = modelId.toLowerCase()
+  // Gemini 4 Argon carries its effort in the wire route (`gemini-4-argon-<tier>`)
+  // rather than in a thinking budget, and its captured default is Medium.
+  if (lower.includes('argon')) {
+    return {
+      efforts: [
+        { id: ReasoningEffortId('low'), name: 'Low' },
+        { id: ReasoningEffortId('medium'), name: 'Medium' },
+        { id: ReasoningEffortId('high'), name: 'High' },
+      ],
+      defaultEffort: ReasoningEffortId('medium'),
+    }
+  }
   if (lower.includes('flash') && !lower.includes('image')) {
     return {
       efforts: [
@@ -633,6 +645,12 @@ function parseLiveModelIds(
       live.add('gemini-3.8-flash-medium')
       live.add('gemini-3.8-flash-low')
       live.add('gemini-3.8-flash-high')
+    }
+    if (cleanId.startsWith('gemini-4-argon')) {
+      live.add('gemini-4-argon')
+      live.add('gemini-4-argon-low')
+      live.add('gemini-4-argon-medium')
+      live.add('gemini-4-argon-high')
     }
     if (rawEntry.modelName !== undefined && typeof rawEntry.modelName === 'string') {
       if (!safeModelId(rawEntry.modelName)) throw new LlmError('The Antigravity live model catalog did not match the audited schema', 'PROTOCOL_DRIFT')
@@ -833,6 +851,9 @@ function buildPayloadFromContents(
 ): Record<string, unknown> {
   const wireModel = resolveWireModel(options.model, options.reasoningEffort)
   const usesCapturedGemini38ThinkingBudget = /^gemini-3\.8-flash-(?:low|medium|high)$/u.test(wireModel)
+  // Gemini 4 Argon routes already name their tier, so the request must not also
+  // carry an explicit thinking level or budget; the wire model is the setting.
+  const usesArgonTieredRoute = /^gemini-4-argon(?:-(?:low|medium|high))?$/u.test(wireModel)
   const requestContents = groupClaudeFunctionResponses(contents, options.model)
   const request: Record<string, unknown> = { contents: requestContents }
   // V3 AgentLoop stores instructions in system messages. One-shot callers may
@@ -846,16 +867,16 @@ function buildPayloadFromContents(
   if (systemParts.length > 0) request.systemInstruction = { parts: systemParts }
   const generationConfig: Record<string, unknown> = {}
   if (options.maxTokens !== undefined) generationConfig.maxOutputTokens = boundedInteger(options.maxTokens, 1, 1_000_000, 'maxTokens')
-  else if (usesCapturedGemini38ThinkingBudget) generationConfig.maxOutputTokens = 65536
+  else if (usesCapturedGemini38ThinkingBudget || usesArgonTieredRoute) generationConfig.maxOutputTokens = 65536
   if (options.temperature !== undefined) generationConfig.temperature = boundedNumber(options.temperature, -100, 100, 'temperature')
   if (options.stop !== undefined) generationConfig.stopSequences = options.stop.slice(0, 16).map(item => item.slice(0, 256))
-  if (options.reasoningEffort !== undefined) generationConfig.thinkingConfig = { thinkingLevel: String(options.reasoningEffort) }
+  if (options.reasoningEffort !== undefined && !usesArgonTieredRoute) generationConfig.thinkingConfig = { thinkingLevel: String(options.reasoningEffort) }
   if (Object.keys(generationConfig).length > 0) request.generationConfig = generationConfig
   if (options.tools !== undefined && options.tools.length > 0) {
     const declarations = buildFunctionDeclarations(options.tools)
     if (declarations.length > 0) request.tools = [{ functionDeclarations: declarations }]
   }
-  const resolved = resolveModelWithTier(usesCapturedGemini38ThinkingBudget ? wireModel : options.model, { cli_first: false })
+  const resolved = resolveModelWithTier(usesCapturedGemini38ThinkingBudget ? wireModel : options.model)
   const requestedEffort = normalizeReasoningEffort(options.reasoningEffort)
   const thinkingLevel = requestedEffort ?? resolved.thinkingLevel
   if (wireModel.toLowerCase().includes('claude')) {
@@ -869,9 +890,9 @@ function buildPayloadFromContents(
   } else {
     applyGeminiTransforms(request, {
       model: wireModel,
-      ...(thinkingLevel === undefined || usesCapturedGemini38ThinkingBudget ? {} : { tierThinkingLevel: thinkingLevel as 'low' | 'medium' | 'high' }),
+      ...(thinkingLevel === undefined || usesCapturedGemini38ThinkingBudget || usesArgonTieredRoute ? {} : { tierThinkingLevel: thinkingLevel as 'low' | 'medium' | 'high' }),
       ...(resolved.thinkingBudget === undefined ? {} : { tierThinkingBudget: resolved.thinkingBudget }),
-      ...(options.reasoningEffort === undefined && resolved.thinkingBudget === undefined ? {} : { normalizedThinking: { includeThoughts: true, ...(resolved.thinkingBudget === undefined ? {} : { thinkingBudget: resolved.thinkingBudget }) } }),
+      ...(usesArgonTieredRoute || (options.reasoningEffort === undefined && resolved.thinkingBudget === undefined) ? {} : { normalizedThinking: { includeThoughts: true, ...(resolved.thinkingBudget === undefined ? {} : { thinkingBudget: resolved.thinkingBudget }) } }),
     })
     if (usesCapturedGemini38ThinkingBudget) {
       const transformedConfig = request.generationConfig
@@ -1120,10 +1141,16 @@ function resolveWireModel(model: string, reasoningEffort?: GenerateOptions['reas
     return 'gemini-3-flash'
   }
   const effort = normalizeReasoningEffort(reasoningEffort)
-  const routeModel = effort !== undefined && (model === 'antigravity-gemini-3.8-flash' || model === 'gemini-3.8-flash')
+  // Gemini 4 Argon encodes the tier in the route itself, the same way the
+  // captured Gemini 3.8 routes do, so the requested effort becomes a suffix.
+  const usesTierSuffix = model === 'antigravity-gemini-4-argon'
+    || model === 'gemini-4-argon'
+    || model === 'antigravity-gemini-3.8-flash'
+    || model === 'gemini-3.8-flash'
+  const routeModel = effort !== undefined && usesTierSuffix
     ? `${model}-${effort}`
     : model
-  const resolved = resolveModelWithTier(routeModel, { cli_first: false })
+  const resolved = resolveModelWithTier(routeModel)
   if (resolved.actualModel.startsWith('gemini-3.7-flash')) {
     return 'gemini-3-flash'
   }

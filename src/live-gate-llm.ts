@@ -8,10 +8,10 @@ import type { LiveGateResult } from './live-gates.ts'
 import { classifyGate0Outcome } from './live-gate-outcome.ts'
 import type { LlmFamilyId } from './status.ts'
 
-export const LIVE_TEXT_MODEL = 'antigravity-gemini-3.7-flash' as const
+export const LIVE_TEXT_MODEL = 'antigravity-gemini-3.8-flash' as const
 export const LIVE_TEXT_MODEL_BY_FAMILY: Readonly<Record<LlmFamilyId, string>> = Object.freeze({
   gemini: LIVE_TEXT_MODEL,
-  claude: 'antigravity-claude-sonnet-4-6-thinking',
+  claude: 'antigravity-claude-sonnet-5-5',
   'gpt-oss': 'antigravity-gpt-oss-120b-medium',
 })
 

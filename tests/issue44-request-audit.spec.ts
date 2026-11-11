@@ -15,7 +15,12 @@ const fixture = (body: unknown, status = 200) => {
 
 describe('issue #44 request audit (current behavior, no private calls)', () => {
   it('resolves 3.8 to Antigravity medium with a 4000-token thinking budget', () => {
-    expect(resolveModelWithTier('antigravity-gemini-3.8-flash', { cli_first: false })).toMatchObject({ actualModel: 'gemini-3.8-flash-medium', thinkingBudget: 4000, tier: 'medium', quotaPreference: 'antigravity', explicitQuota: true })
+    expect(resolveModelWithTier('antigravity-gemini-3.8-flash')).toMatchObject({ actualModel: 'gemini-3.8-flash-medium', thinkingBudget: 4000, tier: 'medium', isThinkingModel: true })
+  })
+  it('resolves Gemini 4 Argon tiers to their wire routes without a thinking budget', () => {
+    expect(resolveModelWithTier('antigravity-gemini-4-argon')).toMatchObject({ actualModel: 'gemini-4-argon-medium', thinkingLevel: 'medium', tier: 'medium' })
+    expect(resolveModelWithTier('antigravity-gemini-4-argon-high')).toMatchObject({ actualModel: 'gemini-4-argon-high', thinkingLevel: 'high' })
+    expect(resolveModelWithTier('antigravity-gemini-4-argon-low')).not.toHaveProperty('thinkingBudget')
   })
   it('documents the minimal envelope and omitted generation/agent metadata', () => {
     const payload = buildGroundedSearchPayload('query', credential)

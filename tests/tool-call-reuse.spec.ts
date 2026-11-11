@@ -6,7 +6,7 @@ import type { HostCredential } from '../src/credential-coordinator.ts'
 import type { PrivateTransportRequest } from '../src/private-transport.ts'
 
 const GEMINI = 'antigravity-gemini-3.8-flash'
-const CLAUDE = 'antigravity-claude-opus-4-6-thinking'
+const CLAUDE = 'antigravity-claude-opus-5-5'
 const credential: HostCredential = {
   accessToken: 'offline-access', refreshToken: 'offline-refresh',
   expiresAt: Date.parse('2030-01-01T00:00:00.000Z'), projectId: 'offline-project',

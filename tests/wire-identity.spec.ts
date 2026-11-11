@@ -27,7 +27,7 @@ describe('plugin-owned Wire Identity', () => {
   it('keeps the audited Antigravity provider identity and adds one DSH carrier', () => {
     const wire = identity()
     expect(AGY_PROVIDER_USER_AGENT).toBe(buildAntigravityHarnessUserAgent())
-    expect(AGY_PROVIDER_USER_AGENT).toContain('antigravity/cli/1.1.24')
+    expect(AGY_PROVIDER_USER_AGENT).toContain('antigravity/cli/1.3.5')
     expect(wire.headers()).toEqual({
       'User-Agent': AGY_PROVIDER_USER_AGENT,
       [DSH_ATTRIBUTION_HEADER]: DSH_USER_AGENT,

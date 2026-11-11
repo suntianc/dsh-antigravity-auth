@@ -97,12 +97,12 @@ describe('Antigravity login RPC', () => {
     const service = createBootstrapStatusService()
     const snapshot = {
       state: 'snapshot' as const,
-      models: [{ id: 'antigravity-gemini-3.7-flash', name: 'Gemini 3.7 Flash', state: 'snapshot' as const }],
+      models: [{ id: 'antigravity-gemini-3.8-flash', name: 'Gemini 3.7 Flash', state: 'snapshot' as const }],
     }
     const live = {
       state: 'live-available' as const,
       checkedAt: '2030-01-01T00:00:00.000Z',
-      models: [{ id: 'antigravity-gemini-3.7-flash', name: 'Gemini 3.7 Flash', state: 'live-available' as const }],
+      models: [{ id: 'antigravity-gemini-3.8-flash', name: 'Gemini 3.7 Flash', state: 'live-available' as const }],
     }
     const catalog = { catalogSnapshot: vi.fn(() => snapshot), modelCatalog: vi.fn(async () => live) }
 
@@ -282,7 +282,7 @@ describe('Antigravity login RPC', () => {
       state: 'live-available',
       checkedAt: '2030-01-01T00:00:00.000Z',
       models: [
-        { id: 'antigravity-gemini-3.7-flash', name: 'Gemini 3.7 Flash', state: 'live-available' },
+        { id: 'antigravity-gemini-3.8-flash', name: 'Gemini 3.7 Flash', state: 'live-available' },
         { id: 'antigravity-claude-sonnet', name: 'Claude Sonnet', state: 'unavailable' },
       ],
     }
