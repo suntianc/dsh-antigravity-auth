@@ -30,7 +30,7 @@ export const name = 'antigravity-search'
 export const inject = ['web', 'antigravityAuth']
 export const ANTIGRAVITY_SEARCH_PROVIDER_ID = 'antigravity'
 export const ANTIGRAVITY_SEARCH_ENDPOINT = `${ANTIGRAVITY_WIRE_ORIGIN}/v1internal:generateContent` as const
-export const ANTIGRAVITY_SEARCH_MODEL = 'antigravity-gemini-3.7-flash'
+export const ANTIGRAVITY_SEARCH_MODEL = 'antigravity-gemini-3.8-flash'
 export const ANTIGRAVITY_SEARCH_SETTINGS_NAMESPACE = 'antigravity-search'
 
 export interface AntigravitySearchSettings {
@@ -110,6 +110,7 @@ export class AntigravitySearchProvider implements WebSearchProvider {
       })) {
         if (event.data.trim() === '[DONE]') continue
         const value = parseJson(event.data)
+        assertSearchResponseSucceeded(value)
         truncated ||= collectSearchFacts(value, content, sources, seen, maxResults)
       }
     } catch (error) {
@@ -164,6 +165,58 @@ export function apply(ctx?: Context, config: Config = { enabled: true, model: AN
   })
 }
 
+/** Inspect only bounded, closed error identifiers; never expose provider messages/details. */
+function assertSearchResponseSucceeded(value: unknown): void {
+  if (!isRecord(value)) return
+  const root = isRecord(value.response) ? value.response : value
+  for (const envelope of root === value ? [value] : [value, root]) {
+    if (envelope.error !== undefined && envelope.error !== null) {
+      const error = envelope.error
+      const status = isRecord(error) && typeof error.code === 'number'
+        && Number.isInteger(error.code) && error.code >= 400 && error.code <= 599
+        ? error.code
+        : isRecord(error) && typeof error.status === 'string'
+          ? SEARCH_RPC_ERROR_STATUS.get(error.status)
+          : undefined
+      const classified = status === undefined ? undefined : privateStatusError(status)
+      throw classified === undefined
+        ? new WebError('The Antigravity Search request failed safely', 'ANTIGRAVITY_SEARCH_FAILED')
+        : toWebError(classified)
+    }
+  }
+  for (const envelope of root === value ? [value] : [value, root]) {
+    const feedback = envelope.promptFeedback ?? envelope.prompt_feedback
+    if (isRecord(feedback)) {
+      const reason = feedback.blockReason ?? feedback.block_reason
+      if (typeof reason === 'string' && reason.length > 0 && reason !== 'BLOCK_REASON_UNSPECIFIED') {
+        throw searchBlockedError()
+      }
+    }
+  }
+  if (Array.isArray(root.candidates)) {
+    if (root.candidates.length > 512) throw new WebError('Antigravity Search returned too many candidates', 'ANTIGRAVITY_SEARCH_PROTOCOL_DRIFT')
+    for (const candidate of root.candidates) {
+      if (!isRecord(candidate)) continue
+      const reason = candidate.finishReason ?? candidate.finish_reason
+      if (typeof reason === 'string' && SEARCH_BLOCKED_FINISH_REASONS.has(reason)) throw searchBlockedError()
+    }
+  }
+}
+
+const SEARCH_RPC_ERROR_STATUS = new Map<string, number>([
+  ['UNAUTHENTICATED', 401], ['PERMISSION_DENIED', 403], ['RESOURCE_EXHAUSTED', 429],
+  ['INVALID_ARGUMENT', 400], ['NOT_FOUND', 404], ['FAILED_PRECONDITION', 400],
+  ['INTERNAL', 500], ['UNAVAILABLE', 503], ['DEADLINE_EXCEEDED', 504],
+])
+const SEARCH_BLOCKED_FINISH_REASONS = new Set([
+  'SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII',
+  'IMAGE_SAFETY', 'IMAGE_PROHIBITED_CONTENT',
+])
+
+function searchBlockedError(): WebError {
+  return new WebError('Antigravity Search was blocked by the provider', 'ANTIGRAVITY_SEARCH_BLOCKED')
+}
+
 function collectSearchFacts(
   value: unknown,
   content: string[],
@@ -180,7 +233,6 @@ function collectSearchFacts(
     for (const candidate of root.candidates) {
       if (!isRecord(candidate)) continue
       texts.push(findText(candidate))
-      if (isRecord(candidate.content)) texts.push(findText(candidate.content))
       metadataValues.push(candidate.groundingMetadata, candidate.grounding_metadata)
     }
   }
@@ -221,7 +273,7 @@ function findText(value: Record<string, unknown>): string | undefined {
   const output: string[] = []
   let length = 0
   for (const part of parts) {
-    if (!isRecord(part) || typeof part.text !== 'string' || hasControl(part.text)) continue
+    if (!isRecord(part) || typeof part.text !== 'string' || hasControl(part.text, true)) continue
     const text = part.text.slice(0, 64 * 1024 - length)
     output.push(text)
     length += text.length
@@ -234,9 +286,12 @@ function safeSourceText(value: unknown, max: number): string | undefined {
   return typeof value === 'string' && value.length > 0 && value.length <= max && !hasControl(value) ? value : undefined
 }
 
-function hasControl(value: string): boolean {
+function hasControl(value: string, allowTextWhitespace = false): boolean {
   for (const character of value) {
     const code = character.charCodeAt(0)
+    // Answer bodies may contain ordinary Markdown whitespace; URLs and source
+    // labels retain the stricter policy. Never allow other C0 controls or DEL.
+    if (allowTextWhitespace && (code === 9 || code === 10 || code === 13)) continue
     if (code < 32 || code === 127) return true
   }
   return false
