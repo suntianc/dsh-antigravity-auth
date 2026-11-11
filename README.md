@@ -9,7 +9,7 @@ Use your Antigravity account in [DeepSeek Harness (DSH)](https://github.com/deep
 
 > **Unofficial, experimental, personal use only.** Google does not support third-party Antigravity login tools; your account may be suspended or terminated. Read the [Google FAQ](https://antigravity.google/docs/faq/) and [Additional Terms](https://antigravity.google/terms) before signing in. Private endpoints can change or stop working without notice. Do not rely on this plugin for production workloads.
 
-**Current release:** `0.1.5` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
+**Current release:** `0.1.6` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
 
 [Quick start](#quick-start) · [Using the capabilities](#using-the-capabilities) · [Account commands](#account-commands) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
@@ -40,7 +40,7 @@ Stop the Host using the target profile, then run:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.5
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.6
 dsh plugin --profile web list
 ```
 
@@ -60,7 +60,7 @@ For terminal login, see [Account commands](#account-commands).
 ## Using the capabilities
 
 - **Models:** choose `google-antigravity` in DSH's model selector. The plugin also registers `google` as an alias when no other provider owns it. Live discovery filters the pinned model catalog; if discovery is temporarily unavailable, the selector may show an advisory snapshot rather than confirmed availability.
-- **Search:** select `antigravity` in the Host's **Web Search** provider configuration when multiple providers are installed. Enabling the Antigravity card alone does not replace DSH's selected provider. The stock `web_search` tool then returns grounded results with source links.
+- **Search:** select `antigravity` in the Host's **Web Search** provider configuration when multiple providers are installed. Enabling the Antigravity card alone does not replace DSH's selected provider. The stock `web_search` tool then returns grounded results with source links. Search defaults to `antigravity-gemini-3.8-flash`; an explicit model override remains supported.
 - **Images:** ask DSH to generate an image, or edit an explicit session image (`image:<id>`) or workspace image. `generate_image` accepts a prompt, up to **5 references**, an optional model, and requests for **1–4 images** (`n`). Partial success can return fewer images with warnings. Images are saved as session attachments and can be found with `list_images`. Dedicated size, aspect-ratio, quality, and transparency parameters are not implemented.
 - **Video:** provide an explicit MP4 path inside the active workspace and a question for `analyze_video`. The default and maximum file limit is **32 MiB**. Remote URLs, paths outside the workspace, and symlinks are rejected. The tool sends the MP4 to the private endpoint; it does not implement local frame sampling. This is an experimental POC, not a guarantee of full video, audio, or timeline understanding.
 - **Quota:** check the Antigravity settings dashboard for remaining five-hour/weekly limits and reset times. Unavailable or rate-limited quota data is shown as a status, not treated as zero usage.

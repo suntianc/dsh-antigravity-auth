@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-11
+
+- Fix #44: default grounded search to `antigravity-gemini-3.8-flash` while preserving explicit model overrides and Host provider selection.
+- Classify embedded provider errors and safety blocks without leaking response details, and reject late SSE failures instead of returning earlier partial results.
+- Preserve normal Markdown whitespace in search answers, collect candidate text once, and retain strict source URL/title/snippet validation.
+- Refocus the bilingual READMEs on setup, capabilities, troubleshooting, and safety boundaries.
+
 ## [0.1.5] - 2026-11-06
 
 - Accept the Host-generated OAuth `select_account consent` prompt so login can open the Google authorization page and show its manual link, addressing a released-package defect consistent with #43.
