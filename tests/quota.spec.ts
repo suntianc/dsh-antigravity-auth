@@ -29,6 +29,24 @@ describe('Antigravity quota', () => {
     expect(JSON.stringify(result)).not.toMatch(/secret|bucketId|displayName/u)
   })
 
+  it('keeps the Gemini 4 Argon weekly pool separate from the shared Gemini pool', () => {
+    const result = normalizeQuotaResponse({
+      groups: [
+        {
+          displayName: 'Gemini Models',
+          buckets: [
+            { bucketId: 'gemini-weekly', window: 'weekly', remainingFraction: 1, resetTime: reset },
+            { bucketId: 'gemini-argon-wtu-weekly', displayName: 'Gemini 4 Argon Weekly Limit', window: 'weekly', remainingFraction: 0.94, resetTime: reset },
+          ],
+        },
+      ],
+    }, Date.parse('2029-01-01T00:00:00.000Z'))
+    expect(result.groups).toEqual([
+      { group: 'gemini', modelCount: 0, windows: [{ window: 'weekly', remainingFraction: 1, resetTime: reset }] },
+      { group: 'gemini-argon', modelCount: 0, windows: [{ window: 'weekly', remainingFraction: 0.94, resetTime: reset }] },
+    ])
+  })
+
   it('coalesces refreshes, enforces the minimum interval, and keeps errors value-safe', async () => {
     const now = vi.fn(() => 1_900_000_000_000)
     const request = vi.fn(async input => {

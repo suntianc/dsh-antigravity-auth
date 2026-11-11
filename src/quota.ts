@@ -20,6 +20,12 @@ export const QUOTA_REFRESH_MIN_INTERVAL_MS = 30_000
 
 export type QuotaState = 'available' | 'unauthenticated' | 'forbidden' | 'rate-limited' | 'offline' | 'timeout' | 'protocol-drift'
 export type QuotaWindowKind = '5h' | 'weekly'
+/**
+ * Gemini 4 Argon is metered by its own weekly pool (`gemini-argon-wtu-weekly`
+ * upstream) instead of the shared Gemini pool, so it must stay a distinct group
+ * or its usage is reported against the wrong limit.
+ */
+export type QuotaGroupKind = 'gemini' | 'gemini-argon' | 'non-gemini'
 
 export interface QuotaWindowView {
   readonly window: QuotaWindowKind
@@ -28,7 +34,7 @@ export interface QuotaWindowView {
 }
 
 export interface QuotaGroupView {
-  readonly group: 'gemini' | 'non-gemini'
+  readonly group: QuotaGroupKind
   readonly modelCount: number
   readonly windows: readonly QuotaWindowView[]
 }
@@ -243,7 +249,7 @@ function identifyWindow(value: Record<string, unknown>): QuotaWindowKind | undef
   return undefined
 }
 
-function identifyGroup(candidate: Record<string, unknown>, bucket?: Record<string, unknown>): 'gemini' | 'non-gemini' | undefined {
+function identifyGroup(candidate: Record<string, unknown>, bucket?: Record<string, unknown>): QuotaGroupKind | undefined {
   const raw = [
     candidate.displayName,
     candidate.group,
@@ -257,6 +263,9 @@ function identifyGroup(candidate: Record<string, unknown>, bucket?: Record<strin
     bucket?.bucket_id,
     bucket?.displayName,
   ].filter(Boolean).map(String).join(' ').toLowerCase()
+  // Argon must win over the generic `gemini` fallback: its bucket id is
+  // `gemini-argon-wtu-weekly`, which would otherwise be read as the Gemini pool.
+  if (raw.includes('argon')) return 'gemini-argon'
   if (raw.includes('3p') || raw.includes('non') || raw.includes('claude') || raw.includes('gpt') || raw.includes('openai') || raw.includes('anthropic') || raw.includes('third-party') || raw.includes('external')) return 'non-gemini'
   if (raw.includes('gemini') || raw.includes('google') || raw.includes('chat') || raw.includes('code') || raw.includes('default') || raw.length === 0) return 'gemini'
   return 'gemini'
