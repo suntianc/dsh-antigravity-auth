@@ -58,8 +58,8 @@ describe('opt-in live gate CLI', () => {
   })
 
   it.each([
-    ['gemini', 'antigravity-gemini-3.7-flash'],
-    ['claude', 'antigravity-claude-sonnet-4-6-thinking'],
+    ['gemini', 'antigravity-gemini-3.8-flash'],
+    ['claude', 'antigravity-claude-sonnet-5-5'],
     ['gpt-oss', 'antigravity-gpt-oss-120b-medium'],
   ] as const)('runs and records only the selected %s family fixture', async (family, expectedModel) => {
     const auth = { recordGate0: vi.fn(), recordLlmFamilyGate: vi.fn() }

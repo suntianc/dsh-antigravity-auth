@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Bump `@cortexkit/antigravity-auth-core` to `3.0.38`, bringing the Gemini 4 Argon route and the Claude Opus/Sonnet 5.5 routes into the public catalog. Argon advertises low/medium/high effort with a Medium default, resolves to `gemini-4-argon-{low,medium,high}`, and deliberately omits an explicit `thinkingConfig` because the wire route already names its tier.
+- Retire the model ids the 3.x core no longer serves (`gemini-3.5/3.6/3.7-flash`, `gemini-3.1-pro`, the Claude 4.6 routes) from the snapshot, and move the live-gate and video defaults to `antigravity-gemini-3.8-flash`.
+- Adopt the 3.x call and identity surface: `resolveModelWithTier` takes only the model, and the audited CLI identity advances to `antigravity/cli/1.3.5`.
+
 ## [0.1.6] - 2026-11-11
 
 - Fix #44: default grounded search to `antigravity-gemini-3.8-flash` while preserving explicit model overrides and Host provider selection.

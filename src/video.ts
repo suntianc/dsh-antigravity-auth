@@ -33,7 +33,7 @@ export const inject = ['tools', 'fs', 'antigravityAuth']
 export const ANALYZE_VIDEO_TOOL_NAME = 'analyze_video'
 export const UNDERSTAND_VIDEO_TOOL_NAME = ANALYZE_VIDEO_TOOL_NAME
 export const ANTIGRAVITY_VIDEO_ENDPOINT = `${ANTIGRAVITY_WIRE_ORIGIN}/v1internal:generateContent` as const
-export const ANTIGRAVITY_VIDEO_MODEL = 'antigravity-gemini-3.7-flash'
+export const ANTIGRAVITY_VIDEO_MODEL = 'antigravity-gemini-3.8-flash'
 export const ANTIGRAVITY_VIDEO_SETTINGS_NAMESPACE = 'antigravity-video'
 
 export interface AntigravityVideoSettings {
@@ -136,7 +136,7 @@ export function buildVideoPayload(
   data: Uint8Array,
 ): Record<string, unknown> {
   const project = credential.projectId === 'inductive-dreamer-qrkws' || !credential.projectId ? undefined : credential.projectId
-  const resolved = resolveModelWithTier(model, { cli_first: false })
+  const resolved = resolveModelWithTier(model)
   const wireModel = resolved.actualModel.startsWith('gemini-3.7-flash') ? 'gemini-3-flash' : resolved.actualModel
   return {
     ...(project === undefined ? {} : { project }),

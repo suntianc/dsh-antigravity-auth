@@ -26,12 +26,12 @@ function options(overrides: Partial<AntigravityVideoToolOptions> = {}): Antigrav
 
 describe('gated video understanding POC', () => {
   it('does not register or execute the default-disabled capability', async () => {
-    const tool = createAntigravityVideoTools(options({ settings: () => ({ enabled: false, model: 'antigravity-gemini-3.7-flash' }) }))[0]!
+    const tool = createAntigravityVideoTools(options({ settings: () => ({ enabled: false, model: 'antigravity-gemini-3.8-flash' }) }))[0]!
     await expect(tool.execute({}, exec)).rejects.toMatchObject({ code: 'VIDEO_DISABLED' })
   })
 
   it('returns only bounded text and usage, never the workspace path', async () => {
-    const tool = createAntigravityVideoTools(options({ settings: () => ({ enabled: true, model: 'antigravity-gemini-3.7-flash' }) }))[0]!
+    const tool = createAntigravityVideoTools(options({ settings: () => ({ enabled: true, model: 'antigravity-gemini-3.8-flash' }) }))[0]!
     const result = await tool.execute({ path: 'clip.mp4', prompt: 'What is visible?' }, exec)
     expect(result).toEqual({ text: 'frame fact', usage: { inputTokens: 2, outputTokens: 3 } })
     expect(JSON.stringify(result)).not.toContain('clip.mp4')
