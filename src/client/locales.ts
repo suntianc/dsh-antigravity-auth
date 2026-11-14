@@ -118,6 +118,8 @@ export const en = {
   remaining: 'remaining',
   refreshesIn: 'Refreshes in {time}',
   quotaDayUnit: 'd',
+  quotaCheckedAt: 'Last checked:',
+  quotaSnapshotNotice: 'Quota is a snapshot of the reported windows, not a guarantee that every model request is available.',
 } as const
 
 export type AntigravityAuthKey = keyof typeof en
@@ -240,4 +242,6 @@ export const zh: Record<AntigravityAuthKey, string> = {
   remaining: '剩余',
   refreshesIn: '{time} 后刷新',
   quotaDayUnit: '天',
+  quotaCheckedAt: '查询时间：',
+  quotaSnapshotNotice: '额度是已返回窗口的查询快照，不代表每个模型请求都一定可用。',
 }

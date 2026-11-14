@@ -9,7 +9,7 @@ Use your Antigravity account in [DeepSeek Harness (DSH)](https://github.com/deep
 
 > **Unofficial, experimental, personal use only.** Google does not support third-party Antigravity login tools; your account may be suspended or terminated. Read the [Google FAQ](https://antigravity.google/docs/faq/) and [Additional Terms](https://antigravity.google/terms) before signing in. Private endpoints can change or stop working without notice. Do not rely on this plugin for production workloads.
 
-**Current release:** `0.1.6` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
+**Current release:** `0.1.7` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
 
 [Quick start](#quick-start) · [Using the capabilities](#using-the-capabilities) · [Account commands](#account-commands) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
@@ -40,7 +40,7 @@ Stop the Host using the target profile, then run:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.6
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.7
 dsh plugin --profile web list
 ```
 

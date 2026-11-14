@@ -49,3 +49,105 @@ describe('Antigravity quota', () => {
     await service.dispose()
   })
 })
+
+function quotaResponse(fraction: number): Response {
+  return new Response(JSON.stringify({ groups: [{ displayName: 'Gemini', buckets: [{ window: 'weekly', remainingFraction: fraction, resetTime: reset }] }] }))
+}
+
+function account(name: string) {
+  return { accessToken: `access-${name}`, refreshToken: `refresh-${name}`, expiresAt: Date.parse(reset), projectId: `project-${name}` }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
+
+describe('account-bound quota snapshots', () => {
+  it('does not reuse account A quota for account B inside the throttle window', async () => {
+    let active = account('A')
+    const request = vi.fn(async () => quotaResponse(active.projectId === 'project-A' ? 1 : 0.2))
+    const service = createQuotaService({ auth: { credential: async () => active }, transport: { request } })
+    expect((await service.refresh()).groups?.[0]?.windows[0]?.remainingFraction).toBe(1)
+    active = account('B')
+    expect((await service.refresh()).groups?.[0]?.windows[0]?.remainingFraction).toBe(0.2)
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(service.status())).not.toMatch(/access-|refresh-|project-/u)
+    await service.dispose()
+  })
+
+  it('invalidates synchronously and fences an old result even if transport ignores abort', async () => {
+    let active = account('A')
+    const oldResponse = deferred<Response>()
+    const newResponse = deferred<Response>()
+    const request = vi.fn(async input => input.accessToken === 'access-A' ? await oldResponse.promise : await newResponse.promise)
+    const service = createQuotaService({ auth: { credential: async () => active }, transport: { request } })
+    const old = service.refresh()
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+    active = account('B')
+    service.invalidate()
+    expect(service.status()).toEqual({ state: 'unauthenticated' })
+    const fresh = service.refresh()
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2))
+    await expect(old).resolves.toEqual({ state: 'unauthenticated' })
+    oldResponse.resolve(quotaResponse(1))
+    const shared = service.refresh(undefined, true)
+    newResponse.resolve(quotaResponse(0.2))
+    expect((await fresh).groups?.[0]?.windows[0]?.remainingFraction).toBe(0.2)
+    expect(await shared).toEqual(service.status())
+    expect(request).toHaveBeenCalledTimes(2)
+    await service.dispose()
+  })
+
+  it('fences stale credential lookups across explicit invalidation', async () => {
+    const lookup = deferred<ReturnType<typeof account>>()
+    const credential = vi.fn().mockReturnValueOnce(lookup.promise).mockResolvedValue(account('B'))
+    const request = vi.fn(async () => quotaResponse(0.2))
+    const service = createQuotaService({ auth: { credential }, transport: { request } })
+    const old = service.refresh()
+    service.invalidate()
+    const fresh = await service.refresh()
+    lookup.resolve(account('A'))
+    expect(await old).toEqual(fresh)
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({accessToken: 'access-B'}))
+    await service.dispose()
+  })
+
+  it('clears snapshots on logout and allows bounded disposal of an uncooperative request', async () => {
+    let active: ReturnType<typeof account> | undefined = account('A')
+    const hanging = deferred<Response>()
+    const request = vi.fn().mockResolvedValueOnce(quotaResponse(1)).mockReturnValue(hanging.promise)
+    const service = createQuotaService({ auth: { credential: async () => active }, transport: { request } })
+    await service.refresh()
+    active = undefined
+    expect(await service.refresh()).toEqual({ state: 'unauthenticated' })
+    active = account('B')
+    const pending = service.refresh()
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2))
+    await service.dispose()
+    expect(await pending).toEqual({ state: 'unauthenticated' })
+    hanging.resolve(quotaResponse(1))
+    expect(service.status()).toEqual({ state: 'unauthenticated' })
+  })
+})
+
+
+it.each(['resolved', 'rejected'] as const)('ignores an older %s credential lookup after a newer account snapshot', async outcome => {
+  let resolve!: (value: ReturnType<typeof account>) => void
+  let reject!: (error: Error) => void
+  const pendingCredential = new Promise<ReturnType<typeof account>>((done, fail) => { resolve = done; reject = fail })
+  const credential = vi.fn().mockReturnValueOnce(pendingCredential).mockResolvedValue(account('B'))
+  const request = vi.fn(async () => quotaResponse(0.2))
+  const service = createQuotaService({auth: {credential}, transport: {request}})
+  const old = service.refresh()
+  const fresh = await service.refresh()
+  if (outcome === 'resolved') resolve(account('A'))
+  else reject(new Error('obsolete lookup failure'))
+  expect(await old).toEqual(fresh)
+  expect(service.status()).toEqual(fresh)
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(request).toHaveBeenCalledWith(expect.objectContaining({accessToken: 'access-B'}))
+  await service.dispose()
+})

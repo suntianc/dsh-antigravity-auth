@@ -243,3 +243,38 @@ for (const backend of ['memory', 'file'] as const) {
     }
   })
 }
+
+it('switching accounts invalidates cached quota and detaches the previous account flight', async () => {
+  const {store, accounts, a, b} = await stores()
+  const entered = deferred(), release = deferred<Response>()
+  const sent: string[] = []
+  const response = (fraction: number) => new Response(JSON.stringify({groups: [{displayName: 'Gemini', buckets: [{window: 'weekly', remainingFraction: fraction, resetTime: '2030-01-01T00:00:00Z'}]}]}))
+  const service = createAntigravityAuthService({store, accountStore: accounts,
+    credentialOptions: {refreshToken: async ({refreshToken}) => ({accessToken: `access-${refreshToken}`, expiresAt: 9e15})},
+    quotaOptions: {transport: {request: async input => {
+      sent.push(input.accessToken)
+      if (input.accessToken === 'access-fake-A1') {
+        entered.resolve()
+        return await release.promise
+      }
+      return response(0.2)
+    }}},
+  })
+  try {
+    await service.switchAccount(a.id)
+    const pending = service.usage()
+    await entered.promise
+    await service.switchAccount(b.id)
+    const fresh = await service.usage()
+    release.resolve(response(1))
+    expect((await pending).groups).toBeUndefined()
+    expect(fresh.groups?.[0]?.windows[0]?.remainingFraction).toBe(0.2)
+    expect(await service.usage()).toEqual(fresh)
+    expect(sent).toEqual(['access-fake-A1', 'access-fake-B1'])
+    await service.logout()
+    expect(await service.usage()).toEqual({state: 'unauthenticated'})
+  } finally {
+    release.resolve(response(1))
+    await service.dispose()
+  }
+})

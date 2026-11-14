@@ -59,6 +59,7 @@ import {
 } from './replay.ts'
 import { ANTIGRAVITY_WIRE_ORIGIN } from './wire-identity.ts'
 import { classifyPrivateFailure, type PrivateFailureKind } from './private-failure.ts'
+import { RATE_LIMIT_MESSAGE, readRateLimitDiagnostics, rateLimitMessage } from './rate-limit-diagnostics.ts'
 import type { AntigravityModelCatalogState, AntigravityModelCatalogView } from './model-catalog.ts'
 
 export const ANTIGRAVITY_PROVIDER = 'google-antigravity' as const
@@ -282,6 +283,15 @@ export class AntigravityAdapter extends LlmAdapter {
       }
       const statusError = privateStatusError(response.status)
       if (statusError !== undefined) {
+        if (response.status === 429) {
+          const diagnostics = await readRateLimitDiagnostics(response, signal)
+          if (isAborted(signal)) throw new LlmError('The Antigravity request was cancelled', 'CANCELLED')
+          throw new LlmError(rateLimitMessage(diagnostics), 'RATE_LIMIT', {
+            status: 429,
+            ...(diagnostics.retryAfterSeconds === undefined || diagnostics.retryAfterSeconds === 0
+              ? {} : { providerRetryAfterMs: diagnostics.retryAfterSeconds * 1000 }),
+          })
+        }
         if (statusError.code === 'authentication' && !replayed && !hasEmitted.value && !isAborted(signal)) {
           await cancelResponse(response)
           replayed = true
@@ -1591,7 +1601,7 @@ function toModelCatalogError(
 const LLM_FAILURE_MESSAGES: Readonly<Record<PrivateFailureKind, string>> = {
   authentication: 'The Antigravity private request failed: authentication required',
   forbidden: 'The Antigravity private request failed: this account is forbidden',
-  'rate-limited': 'Antigravity rate limit reached (Google returned 429 Resource Exhausted); please wait for your quota window to refresh',
+  'rate-limited': RATE_LIMIT_MESSAGE,
   cancelled: 'The Antigravity private request was cancelled',
   timeout: 'The Antigravity private request timed out',
   'attribution-rejected': 'The Antigravity private request failed: identity attribution was rejected',
@@ -1609,7 +1619,8 @@ function toLlmError(error: unknown): LlmError {
     const kind = classifyPrivateFailure(error)
     const code = LLM_FAILURE_CODES[kind]
     const base = LLM_FAILURE_MESSAGES[kind]
-    const message = error.status === undefined ? base : `${base} (HTTP ${String(error.status)})`
+    const message = error.status === undefined || (kind === 'rate-limited' && error.status === 429)
+      ? base : `${base} (HTTP ${String(error.status)})`
     return error.status === undefined
       ? new LlmError(message, code)
       : new LlmError(message, code, { status: error.status })

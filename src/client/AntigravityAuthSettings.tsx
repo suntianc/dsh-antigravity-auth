@@ -70,7 +70,13 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
     ensureSettingsStyles()
   }, [])
 
-  useEffect(() => subscribe(() => { setResetTick(value => value + 1) }), [subscribe])
+  useEffect(() => subscribe(() => {
+    quotaGeneration.current += 1
+    setQuota(null)
+    setQuotaBusy(false)
+    setQuotaError(null)
+    setResetTick(value => value + 1)
+  }), [subscribe])
 
   const load = useCallback(async (signal?: AbortSignal, silent = false) => {
     const generation = ++statusGeneration.current
@@ -101,6 +107,7 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
     if (rpc.usage === undefined) return
     const generation = ++quotaGeneration.current
     setQuotaBusy(true)
+    setQuota(null)
     setQuotaError(null)
     try {
       const result = await rpc.usage(signal, force)
@@ -120,7 +127,10 @@ export function AntigravityAuthSettings({ rpc, t, subscribe, searchScope, imageS
 
   useEffect(() => {
     if (status?.login.projectAvailable !== true || rpc.usage === undefined) {
+      quotaGeneration.current += 1
       setQuota(null)
+      setQuotaBusy(false)
+      setQuotaError(null)
       return
     }
     const controller = new AbortController()
@@ -449,6 +459,10 @@ function QuotaVisualDashboard({
 }): ReactNode {
   return (
     <div className="agy-quota-section">
+      <p className="agy-quota-subtext">{t('quotaSnapshotNotice')}</p>
+      {quota?.checkedAt === undefined ? null : (
+        <p className="agy-quota-subtext">{t('quotaCheckedAt')} <time dateTime={quota.checkedAt}>{quota.checkedAt}</time></p>
+      )}
       {quota?.state === 'available' && quota.groups !== undefined && quota.groups.length > 0 ? (
         <div className="agy-quota-groups">
           {quota.groups.map(group => {

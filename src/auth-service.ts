@@ -219,6 +219,7 @@ export class AntigravityAuthService implements BootstrapStatusService {
     return {
       record,
       onCleared: async () => {
+        this.quota.invalidate()
         if (account !== undefined) await this.accountStore.removeAccount(account.id, account)
         if (record !== undefined) await this.gates.clear(gateSubject(record))
       },
@@ -243,6 +244,7 @@ export class AntigravityAuthService implements BootstrapStatusService {
       ...(account.lineage === undefined ? {} : { lineage: account.lineage }),
     }
     const committed = await this.store.commit(draft)
+    this.quota.invalidate()
     this.credentials.resetCache()
     if (this.autoActivate) {
       await this.autoActivateGates(committed.lineage ?? 'legacy-account')
@@ -427,6 +429,7 @@ export class AntigravityAuthService implements BootstrapStatusService {
     }
     const committed = await this.store.compareAndCommit(current?.revision ?? 0, draft, current?.lineage)
     if (committed === undefined) throw new OAuthFlowError('credential-conflict', 'The login changed while it was completing')
+    this.quota.invalidate()
     await this.accountStore.saveAccount({
       projectId: project.projectId,
       refreshToken: token.refreshToken,

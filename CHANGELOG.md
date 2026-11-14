@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-14
+
+- Fix #47 diagnostics: report HTTP 429 without assuming the displayed weekly quota is exhausted; preserve only bounded, allowlisted provider hints and validated retry delays, without automatic retries.
+- Bind quota snapshots to the active account and invalidate them on credential changes; prevent stale requests and delayed credential lookups from overwriting a newer account's quota.
+- Show the quota query timestamp and snapshot limitation in English and Chinese, clear obsolete quota after refresh failures or account changes, and recover refresh controls after logout during a pending query.
+- Keep the DSH `0.2.1-rc.5` baseline and existing upstream protocol unchanged. Offline checks do not establish the cause or resolution of the reporter's upstream 429.
+
 ## [0.1.6] - 2026-11-11
 
 - Fix #44: default grounded search to `antigravity-gemini-3.8-flash` while preserving explicit model overrides and Host provider selection.

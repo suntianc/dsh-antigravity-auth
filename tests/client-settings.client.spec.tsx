@@ -466,3 +466,35 @@ describe('Antigravity bootstrap settings', () => {
     expect(actionSignal?.aborted).toBe(true)
   })
 })
+
+it('shows quota query time separately from reset and clears old quota after a failed refresh', async () => {
+  const rpc = rpcFixture({phase: 'success', configured: true, projectAvailable: true}, true)
+  const checkedAt = '2026-11-14T12:00:00.000Z'
+  const usage = vi.fn().mockResolvedValueOnce({ok: true, value: {state: 'available', checkedAt, groups: [{group: 'gemini', modelCount: 1, windows: [{window: 'weekly', remainingFraction: 0.9948, resetTime: '2030-01-01T00:00:00.000Z'}]}]}}).mockRejectedValue(new Error('quota unavailable'))
+  rpc.usage = usage
+  render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={() => () => {}} />)
+  expect(await screen.findByText('99.48%')).toBeTruthy()
+  expect(screen.getByText(checkedAt).getAttribute('datetime')).toBe(checkedAt)
+  expect(screen.getByText(en.quotaSnapshotNotice)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', {name: en.refreshStatus}))
+  await waitFor(() => expect(usage).toHaveBeenCalledTimes(2))
+  expect(screen.queryByText('99.48%')).toBeNull()
+  expect(screen.queryByText(checkedAt)).toBeNull()
+})
+
+
+it('clears pending quota and unlocks refresh when a status notification logs out', async () => {
+  const rpc = rpcFixture({phase: 'success', configured: true, projectAvailable: true}, true)
+  let finish!: (value: unknown) => void
+  rpc.usage = vi.fn().mockReturnValue(new Promise(resolve => { finish = resolve }))
+  let notify!: () => void
+  const subscribe = (listener: () => void) => { notify = listener; return () => {} }
+  render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={subscribe} />)
+  await waitFor(() => expect(rpc.usage).toHaveBeenCalledTimes(1))
+  vi.mocked(rpc.status).mockResolvedValue({ok: true, value: {status: createStatusView(true, {phase: 'idle', configured: false, projectAvailable: false})}})
+  act(() => { notify() })
+  await waitFor(() => expect(screen.getByRole('button', {name: en.refreshStatus})).toHaveProperty('disabled', false))
+  await act(async () => { finish({ok: true, value: {state: 'available', checkedAt: '2026-11-14T12:00:00.000Z', groups: [{group: 'gemini', modelCount: 1, windows: [{window: 'weekly', remainingFraction: 0.9948, resetTime: '2030-01-01T00:00:00.000Z'}]}]}}) })
+  expect(screen.queryByText('99.48%')).toBeNull()
+  expect(screen.getByRole('button', {name: en.refreshStatus})).toHaveProperty('disabled', false)
+})

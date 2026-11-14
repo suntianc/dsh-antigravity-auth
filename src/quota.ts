@@ -42,6 +42,8 @@ export interface QuotaStatusView {
 export interface QuotaService {
   refresh(signal?: AbortSignal, force?: boolean): Promise<QuotaStatusView>
   status(): QuotaStatusView
+  /** Drop account-bound data and detach pending work after a credential mutation. */
+  invalidate(): void
   dispose(): Promise<void>
 }
 
@@ -130,48 +132,100 @@ export function createQuotaService(options: QuotaServiceOptions): QuotaService {
     ...(options.transportOptions?.maxRequestBytes === undefined ? {} : { maxRequestBytes: options.transportOptions.maxRequestBytes }),
   })
   let current: QuotaStatusView = { state: 'unauthenticated' }
-  let checkedAt = 0
+  let checkedAt: number | undefined
+  let subject: Pick<HostCredential, 'refreshToken' | 'projectId'> | undefined
+  let generation = 0
+  let invalidation = 0
+  let lookupSequence = 0
+  let acceptedLookup = 0
   let inFlight: Promise<QuotaStatusView> | undefined
-  let inFlightAbort: (() => void) | undefined
-  const lifecycleController = new AbortController()
+  let controller: AbortController | undefined
   let disposed = false
+
+  const dropState = (): void => {
+    generation += 1
+    current = { state: 'unauthenticated' }
+    checkedAt = undefined
+    subject = undefined
+    controller?.abort()
+    controller = undefined
+    inFlight = undefined
+  }
+
+  const invalidate = (): void => {
+    invalidation += 1
+    dropState()
+  }
 
   return {
     refresh: async (signal, force = false) => {
       if (disposed) return current
-      if (!force && checkedAt > 0 && now() - checkedAt < minInterval) return current
-      if (inFlight !== undefined) return await waitForCaller(inFlight, signal)
-      const combined = mergeAbortSignals(undefined, lifecycleController.signal)
-      inFlightAbort = combined.dispose
-      inFlight = refreshQuota(options.auth, transport, combined.signal, now).then(value => {
-        current = value
-        checkedAt = now()
-        return value
-      }).catch(error => {
+      // Check the active credential before using either the cache or a shared flight.
+      // This private binding never crosses RPC; token rotation may safely refetch.
+      const observedInvalidation = invalidation
+      const lookup = ++lookupSequence
+      let credential: HostCredential | undefined
+      try {
+        credential = await options.auth.credential(signal)
+      } catch (error) {
+        if (signal?.aborted === true) throw error
+        if (observedInvalidation !== invalidation || lookup < acceptedLookup || disposed) return current
+        acceptedLookup = lookup
+        invalidate()
         current = mapQuotaError(error, now())
-        checkedAt = now()
         return current
-      }).finally(() => { combined.dispose(); inFlightAbort = undefined; inFlight = undefined })
-      return await waitForCaller(inFlight, signal)
+      }
+      if (observedInvalidation !== invalidation || lookup < acceptedLookup || disposed) return current
+      acceptedLookup = lookup
+      if (credential === undefined) {
+        invalidate()
+        return current
+      }
+      if (subject?.refreshToken !== credential.refreshToken || subject?.projectId !== credential.projectId) {
+        dropState()
+        subject = { refreshToken: credential.refreshToken, projectId: credential.projectId }
+      }
+      if (!force && checkedAt !== undefined && now() - checkedAt < minInterval) return current
+      if (inFlight !== undefined) return await waitForCaller(inFlight, signal)
+      const requestGeneration = generation
+      const requestController = new AbortController()
+      controller = requestController
+      const flight = waitForCaller(refreshQuota(credential, transport, requestController.signal, now), requestController.signal)
+        .then(value => {
+          if (requestGeneration !== generation || disposed) return current
+          current = value
+          checkedAt = now()
+          return current
+        }).catch(error => {
+          if (requestGeneration !== generation || disposed) return current
+          current = mapQuotaError(error, now())
+          checkedAt = now()
+          return current
+        }).finally(() => {
+          // An obsolete flight must not detach a newer account's request.
+          if (inFlight === flight) {
+            inFlight = undefined
+            controller = undefined
+          }
+        })
+      inFlight = flight
+      return await waitForCaller(flight, signal)
     },
     status: () => current,
+    invalidate,
     dispose: async () => {
       disposed = true
-      lifecycleController.abort()
-      inFlightAbort?.()
-      await inFlight?.catch(() => {})
+      invalidate()
     },
   }
 }
 
 async function refreshQuota(
-  auth: QuotaServiceOptions['auth'],
+  credential: HostCredential,
   transport: PrivateTransport,
   signal: AbortSignal | undefined,
   now: () => number,
 ): Promise<QuotaStatusView> {
-  const credential = await auth.credential(signal)
-  if (credential === undefined) return { state: 'unauthenticated' }
   const body = credential.projectId ? { project: credential.projectId } : {}
   let response = await transport.request({
     url: ANTIGRAVITY_QUOTA_ENDPOINT,
@@ -179,6 +233,10 @@ async function refreshQuota(
     body: JSON.stringify(body),
     ...(signal === undefined ? {} : { signal }),
   })
+  if (signal?.aborted === true) {
+    void response.body?.cancel().catch(() => {})
+    throw new PrivateTransportError('cancelled', 'The quota request was cancelled', { accepted: false })
+  }
   if (response.status === 403 && credential.projectId) {
     try {
       const retryResponse = await transport.request({
@@ -315,20 +373,6 @@ async function waitForCaller<T>(promise: Promise<T>, signal: AbortSignal | undef
     return await Promise.race([promise, cancellation])
   } finally {
     remove?.()
-  }
-}
-
-function mergeAbortSignals(first: AbortSignal | undefined, second: AbortSignal): { signal: AbortSignal; dispose: () => void } {
-  const controller = new AbortController()
-  const abort = (event: Event): void => { if (!controller.signal.aborted) controller.abort((event.target as AbortSignal).reason) }
-  const signals = first === undefined ? [second] : [first, second]
-  for (const signal of signals) {
-    if (signal.aborted) controller.abort(signal.reason)
-    else signal.addEventListener('abort', abort, { once: true })
-  }
-  return {
-    signal: controller.signal,
-    dispose: () => { for (const signal of signals) signal.removeEventListener('abort', abort) },
   }
 }
 
