@@ -4,14 +4,13 @@
 
 ## [0.1.9] - 2026-11-15
 
-- Correct the 0.1.8 compatibility default: `promptCompatibility` is now enabled when omitted, including upgrades from older configurations. Explicit `false` still disables it.
-- Keep all-model Antigravity route ownership, exact default identity-section matching, unchanged HTTP attribution, and documented later-routing limitations. Add schema, upgrade-without-setting, explicit opt-out, and owned-route regression coverage.
+Combined record for the single #47 compatibility fix shipped across 0.1.8–0.1.9. Version 0.1.8 was published with an unintended disabled default and is superseded by 0.1.9; it is not a separate feature release. Existing npm versions, tags, and artifacts are retained unchanged.
 
-## [0.1.8] - 2026-11-15
+0.1.8–0.1.9 合并为同一项 #47 兼容修复记录。0.1.8 因错误的默认关闭设置，已由 0.1.9 替代，不作为两项独立功能；已发布的 npm 版本、tag 和制品保持不变。
 
-- Add opt-in `promptCompatibility` for all models on provider routes owned by this Antigravity adapter. At public SystemPrompt assembly, replace only the exact default `harness:identity` sentence with a generic coding-assistant sentence; keep truthful HTTP attribution, authentication, endpoints, other instructions, tools, and user content unchanged.
-- Keep compatibility disabled by default, scope it to owned `google-antigravity`/`google` routes, and preserve complete personas and lifecycle disposal. Document that later `agent/request` rerouting is unsupported and direct calls bypassing assembly are unchanged.
-- Cover Gemini, Claude, GPT-OSS, and an unknown future model name with offline assembly tests. Live comparisons covered only Gemini 3.8 Flash and do not establish an upstream-confirmed root cause or a universal 429 fix.
+- Enable `promptCompatibility` by default for all models on provider routes owned by this Antigravity adapter, including upgrades with no existing setting. Explicit `false` still disables it; model-name/version changes do not require changes to this compatibility rule.
+- At public SystemPrompt assembly, replace only the exact default `harness:identity` sentence with a generic coding-assistant sentence. Keep truthful HTTP attribution, authentication, endpoints, other instructions, contexts, tools, user content, complete personas, and lifecycle disposal unchanged.
+- Scope compatibility to owned `google-antigravity`/`google` routes. Later cross-provider `agent/request` rerouting is unsupported, and direct calls bypassing assembly are unchanged. Cover Gemini, Claude, GPT-OSS, future model names, upgrade defaults, and opt-out behavior offline; live comparisons covered only Gemini 3.8 Flash and do not establish a universal 429 fix.
 
 ## [0.1.7] - 2026-11-14
 
