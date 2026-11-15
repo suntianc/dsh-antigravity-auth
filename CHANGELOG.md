@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-15
+
+- Correct the 0.1.8 compatibility default: `promptCompatibility` is now enabled when omitted, including upgrades from older configurations. Explicit `false` still disables it.
+- Keep all-model Antigravity route ownership, exact default identity-section matching, unchanged HTTP attribution, and documented later-routing limitations. Add schema, upgrade-without-setting, explicit opt-out, and owned-route regression coverage.
+
 ## [0.1.8] - 2026-11-15
 
 - Add opt-in `promptCompatibility` for all models on provider routes owned by this Antigravity adapter. At public SystemPrompt assembly, replace only the exact default `harness:identity` sentence with a generic coding-assistant sentence; keep truthful HTTP attribution, authentication, endpoints, other instructions, tools, and user content unchanged.

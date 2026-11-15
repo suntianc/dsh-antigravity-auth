@@ -57,7 +57,7 @@ describe('bootstrap lifecycle boundary', () => {
   it('mounts the Host row without OAuth, private transport, timers, or listeners', () => {
     const dispose = vi.fn()
     const handle = vi.fn((_route: ConnectionFetchRoute) => dispose)
-    const inject = vi.fn((_dependencies: readonly string[], callback: (ctx: unknown) => unknown) => callback({
+    const inject = vi.fn((dependencies: readonly string[], callback: (ctx: unknown) => unknown) => dependencies.includes('systemPrompt') ? undefined : callback({
       connection: { fetch: { register: handle } },
       commands: { register: () => () => {} },
       get: (service: string) => service === 'webServer' ? { host: '127.0.0.1' } : undefined,
@@ -86,7 +86,7 @@ describe('bootstrap lifecycle boundary', () => {
       return dispose
     })
     const warn = vi.fn()
-    const inject = vi.fn((_dependencies: readonly string[], callback: (ctx: unknown) => unknown) => callback({
+    const inject = vi.fn((dependencies: readonly string[], callback: (ctx: unknown) => unknown) => dependencies.includes('systemPrompt') ? undefined : callback({
       connection: { fetch: { register: handle }, admit: () => ({ peer: {} }) },
       commands: { register: () => () => {} },
       get: (service: string) => service === 'webServer' ? { host: '0.0.0.0' } : undefined,
@@ -129,7 +129,7 @@ describe('bootstrap lifecycle boundary', () => {
     expect(dispose).toHaveBeenCalledTimes(9)
   })
 
-  it.each([{ enabled: false, existingGoogle: false }, { enabled: true, existingGoogle: false }, { enabled: true, existingGoogle: true }])('registers adapters and scopes compatibility to owned routes: %j', async ({ enabled, existingGoogle }) => {
+  it.each([{ enabled: undefined, existingGoogle: false }, { enabled: undefined, existingGoogle: true }, { enabled: false, existingGoogle: false }, { enabled: true, existingGoogle: false }, { enabled: true, existingGoogle: true }])('registers adapters and scopes compatibility to owned routes: %j', async ({ enabled, existingGoogle }) => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-antigravity-lifecycle-'))
     const previousDataHome = process.env.XDG_DATA_HOME
     process.env.XDG_DATA_HOME = root
@@ -159,11 +159,11 @@ describe('bootstrap lifecycle boundary', () => {
         effect: vi.fn((setup: () => () => Promise<void>) => { cleanup = setup() }),
       }
 
-      applyAuth(runtime as never, { promptCompatibility: enabled })
+      applyAuth(runtime as never, enabled === undefined ? undefined : { promptCompatibility: enabled })
       await vi.waitFor(() => expect(registerAdapter).toHaveBeenCalledOnce())
       const identity = 'You are an AI agent powered by DeepSeek Harness.'
       const input = { sections: [{ name: 'harness:identity', text: identity }], contexts: [], tools: [], variables: { provider: 'google', model: 'antigravity-gemini-3.8-flash' } }
-      expect(Boolean(assemblyHandler)).toBe(enabled)
+      expect(Boolean(assemblyHandler)).toBe(enabled !== false)
       if (assemblyHandler) expect((await assemblyHandler(input, {}, async () => input)).sections[0]?.text).toBe(existingGoogle ? identity : 'You are an AI coding assistant.')
 
       await provided?.recordLlmFamilyGate('claude', 'protocol-drift')
@@ -305,7 +305,7 @@ describe('bootstrap lifecycle boundary', () => {
     let registered: CommandDefinition | undefined
     const handle = vi.fn(() => vi.fn())
     const warn = vi.fn()
-    const inject = vi.fn((_dependencies: readonly string[], callback: (ctx: unknown) => unknown) => callback({
+    const inject = vi.fn((dependencies: readonly string[], callback: (ctx: unknown) => unknown) => dependencies.includes('systemPrompt') ? undefined : callback({
       connection: { fetch: { register: handle } },
       commands: { register: (definition: unknown) => { registered = definition as CommandDefinition; return () => {} } },
       get: (service: string) => service === 'webServer' ? { host: '0.0.0.0' } : undefined,
@@ -330,7 +330,7 @@ describe('bootstrap lifecycle boundary', () => {
       let registered: CommandDefinition | undefined
       const handle = vi.fn(() => vi.fn())
       const warn = vi.fn()
-      const inject = vi.fn((_dependencies: readonly string[], callback: (ctx: unknown) => unknown) => callback({
+      const inject = vi.fn((dependencies: readonly string[], callback: (ctx: unknown) => unknown) => dependencies.includes('systemPrompt') ? undefined : callback({
         connection: { fetch: { register: handle } },
         commands: { register: (definition: unknown) => { registered = definition as CommandDefinition; return () => {} } },
         get: (service: string) => service === 'webServer' ? { host: '127.0.0.1' } : undefined,

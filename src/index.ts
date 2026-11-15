@@ -24,13 +24,13 @@ export const inject = ['llm', 'attachments']
 
 export interface Config { readonly promptCompatibility?: boolean }
 export const Config = Schema.object({
-  promptCompatibility: Schema.boolean().default(false),
+  promptCompatibility: Schema.boolean().default(true),
 })
 
 /** Mount the Host-only OAuth service and its guarded account RPC channel. */
 export function apply(ctx: Context, config: Config = {}): void {
   const ownedRoutes = new Set<string>()
-  if (config.promptCompatibility === true) mountPromptCompatibility(ctx, provider => ownedRoutes.has(provider))
+  if (config.promptCompatibility !== false) mountPromptCompatibility(ctx, provider => ownedRoutes.has(provider))
   const service = createAntigravityAuthService({
     storePath: defaultAuthStorePath(),
     autoActivateGates: true,

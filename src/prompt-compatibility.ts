@@ -1,4 +1,4 @@
-/** Opt-in, section-scoped compatibility; never inspect request/history text. */
+/** Default-on, section-scoped compatibility; never inspect request/history text. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { AssembleContext, PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 

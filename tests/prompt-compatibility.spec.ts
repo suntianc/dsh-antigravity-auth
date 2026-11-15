@@ -4,8 +4,9 @@ import { expect, it } from 'vitest'
 import { Config } from '../src/index.ts'
 import { compatiblePromptAssembly, HARNESS_IDENTITY_SENTENCE, mountPromptCompatibility } from '../src/prompt-compatibility.ts'
 
-it('requires explicit opt-in', () => {
-  expect(Config({}).promptCompatibility).toBe(false)
+it('enables compatibility on upgrade without configuration and allows explicit opt-out', () => {
+  expect(Config({}).promptCompatibility).toBe(true)
+  expect(Config({ promptCompatibility: false }).promptCompatibility).toBe(false)
   expect(Config({ promptCompatibility: true }).promptCompatibility).toBe(true)
 })
 

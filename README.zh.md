@@ -9,7 +9,7 @@
 
 > **非官方、实验性，仅供个人使用。** Google 不支持第三方 Antigravity 登录工具，账号可能被暂停或终止。登录前请阅读 [Google FAQ](https://antigravity.google/docs/faq/) 和 [Additional Terms](https://antigravity.google/terms)。私有接口可能随时变更或失效，请勿用于生产工作负载。
 
-**当前版本：**`0.1.8`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
+**当前版本：**`0.1.9`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
 
 [快速开始](#快速开始) · [使用各项能力](#使用各项能力) · [账号命令](#账号命令) · [常见问题](#常见问题) · [开发](#开发)
 
@@ -40,7 +40,7 @@
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.8
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.9
 dsh plugin --profile web list
 ```
 
@@ -126,13 +126,14 @@ pnpm run check
 
 ## 可选的 Antigravity 提示兼容
 
-`promptCompatibility` 默认 `false`。需要时在现有 `antigravity-auth` 行显式开启，
+`promptCompatibility` 默认 `true`，未配置此项的旧版本升级后也会自动启用。
+已有显式 `false` 保持关闭。如需关闭，在现有 `antigravity-auth` 行配置，
 不要重复插入插件行：
 
 ```yaml
 - id: antigravity-auth
   config:
-    promptCompatibility: true
+    promptCompatibility: false
 ```
 
 覆盖装配时本插件拥有的 `google-antigravity` 路由全部模型，以及仅由本插件拥有时
