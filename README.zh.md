@@ -9,7 +9,7 @@
 
 > **非官方、实验性，仅供个人使用。** Google 不支持第三方 Antigravity 登录工具，账号可能被暂停或终止。登录前请阅读 [Google FAQ](https://antigravity.google/docs/faq/) 和 [Additional Terms](https://antigravity.google/terms)。私有接口可能随时变更或失效，请勿用于生产工作负载。
 
-**当前版本：**`0.1.9`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
+**当前版本：**`0.1.10`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
 
 [快速开始](#快速开始) · [使用各项能力](#使用各项能力) · [账号命令](#账号命令) · [常见问题](#常见问题) · [开发](#开发)
 
@@ -40,7 +40,7 @@
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.9
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.10
 dsh plugin --profile web list
 ```
 
@@ -124,11 +124,23 @@ pnpm run check
 
 [MIT](LICENSE) · [LINUX DO（L 站）](https://linux.do/)
 
-## 可选的 Antigravity 提示兼容
+## Antigravity 提示兼容
 
-`promptCompatibility` 默认 `true`，未配置此项的旧版本升级后也会自动启用。
-已有显式 `false` 保持关闭。如需关闭，在现有 `antigravity-auth` 行配置，
-不要重复插入插件行：
+`promptCompatibility` 默认开启，覆盖本插件 `google-antigravity` 路由及其拥有的
+`google` 别名下的全部模型。处理规则与本地 `dsh-prompt-compat` 默认逻辑一致：
+
+| 位置 | 替换方式 |
+| --- | --- |
+| `harness:identity` 身份段 | 将每处 `You are an AI agent powered by DeepSeek Harness.` 替换为 `You are an AI coding assistant.`，保留段内其他指令。 |
+| `harness:source`、`app:web-surface` 说明段 | 将其中所有 `DeepSeek Harness` 替换为 `host application`。 |
+| 上述两个同名运行时上下文 | 同样替换，并在 DSH 请求准入刷新上下文后保留结果。 |
+
+路径、GUI 地址、插值标记和其他操作说明均保留。其他 provider、完整 persona、
+用户及项目内容、工具、已保存历史不变；HTTP 真实归属标识保留。
+本功能不另行记录提示内容，DSH 正常保存装配结果。
+
+无需配置路由列表、模型筛选或额外规则。需要关闭时，只需在现有
+`antigravity-auth` 行设置 `promptCompatibility: false`：
 
 ```yaml
 - id: antigravity-auth
@@ -136,20 +148,5 @@ pnpm run check
     promptCompatibility: false
 ```
 
-覆盖装配时本插件拥有的 `google-antigravity` 路由全部模型，以及仅由本插件拥有时
-的 `google` 别名；不影响其他 provider。
-通过公开 SystemPrompt 装配钩子，将 `harness:identity` 中完全一致的默认身份句
-替换为 `You are an AI coding assistant.`。该句不再包含宿主名称，但真实 HTTP
-归属标识保持不变。自定义或扩展身份段、完整 persona、其他指令、上下文、工具、
-用户内容、历史、认证与端点均不改动。本功能不记录提示内容；DSH 正常保存装配结果。
-跳过装配的直接 adapter/title 调用不受影响。SystemPrompt 为可选服务，缺失时该选项
-不生效。设回 `false` 即可关闭。
-装配早于 `agent/request` 路由 waterfall；不支持其他插件随后改变 provider/model
-的组合，因为已经装配的提示可能进入后续路由。这类配置请保持关闭；本功能不会
-重写冻结请求来修补后置路由变化。
-
-真实对照仅覆盖 Gemini 3.8 Flash，未逐一验证所有模型。
-少量本地对照中，默认句与 HTTP 429、兼容装配与 HTTP 200 相关，但这不是上游确认
-的根因，也不是额度修复；请求顺序和动态容量仍可能干扰结果。不做 429 后自动改写、
-重试或轮换账号，不保证上游接受。离线验证基线为 DSH 0.2.1-rc.5，不代表已完整验证
-Desktop 0.2.2-rc.3。
+功能通过公开 SystemPrompt 装配接口生效，跳过装配的直接调用及装配后改变 provider
+的情况不在其范围内。离线验证基线为 DSH 0.2.1-rc.5；本次修改不代表已解决所有上游 429。

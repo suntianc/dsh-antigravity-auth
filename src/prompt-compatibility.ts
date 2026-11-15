@@ -1,11 +1,11 @@
-/** Default-on, section-scoped compatibility; never inspect request/history text. */
+/** Default-on prompt compatibility, matching dsh-prompt-compat's built-in rules. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { AssembleContext, PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 
 export const HARNESS_IDENTITY_SENTENCE = 'You are an AI agent powered by DeepSeek Harness.'
 const COMPATIBLE_IDENTITY_SENTENCE = 'You are an AI coding assistant.'
 
-/** Only the exact public default contribution is eligible, not custom personas.
+/** Transform the named identity contributions while retaining their instructions.
  * Route scope is assembly-time only; later agent/request rerouting is unsupported.
  */
 export function compatiblePromptAssembly(
@@ -16,13 +16,32 @@ export function compatiblePromptAssembly(
   const route = context as AssembleContext & { provider?: unknown }
   const provider = typeof route.provider === 'string' ? route.provider : assembly.variables.provider
   if ((provider !== 'google-antigravity' && provider !== 'google') || !ownsRoute(provider)) return assembly
+  const transformText = (name: string, text: string): string => {
+    if (name === 'harness:identity') return text.replaceAll(HARNESS_IDENTITY_SENTENCE, COMPATIBLE_IDENTITY_SENTENCE)
+    if (name === 'harness:source' || name === 'app:web-surface') return text.replaceAll('DeepSeek Harness', 'host application')
+    return text
+  }
   let changed = false
   const sections = assembly.sections.map(section => {
-    if (section.name !== 'harness:identity' || section.text !== HARNESS_IDENTITY_SENTENCE) return section
+    const text = transformText(section.name, section.text)
+    if (text === section.text) return section
     changed = true
-    return { ...section, text: COMPATIBLE_IDENTITY_SENTENCE }
+    return { ...section, text }
   })
-  return changed ? { ...assembly, sections } : assembly
+  const contexts = assembly.contexts.map(item => {
+    if (item.name !== 'harness:source' && item.name !== 'app:web-surface') return item
+    const text = transformText(item.name, item.text)
+    if (text === item.text) return item
+    // DSH refreshes registered runtime contexts after assembly. A plugin-owned
+    // snapshot name preserves the replacement and the original path/GUI URL.
+    const name = `antigravity-prompt-compat:${item.name}`
+    if (assembly.contexts.some(other => other.name === name)) {
+      throw new Error('antigravity-auth: a compatible context name is already registered.')
+    }
+    changed = true
+    return { ...item, name, text }
+  })
+  return changed ? { ...assembly, sections, contexts } : assembly
 }
 
 /** Optional service injection leaves non-agent/terminal compositions usable. */

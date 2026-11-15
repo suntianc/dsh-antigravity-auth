@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-15
+
+- Expand #47 prompt compatibility to the built-in rules of `dsh-prompt-compat`: replace the default identity sentence within extended sections, and neutralize the host name in `harness:source` / `app:web-surface` sections and runtime contexts.
+- Preserve the transformed context snapshots through request-time refresh, retaining paths, GUI URLs, interpolation flags and operating instructions. Keep default-on coverage for every model on owned Antigravity routes with one opt-out switch.
+- Add regressions for repeated identity sentences, context refresh, lifecycle restoration and consecutive AgentLoop turns. This does not establish an upstream-confirmed cause or universal fix for HTTP 429.
+
+- 补齐 #47 提示兼容范围，与 `dsh-prompt-compat` 默认规则一致：身份段内局部替换，并处理源码说明、Web 界面说明及对应运行时上下文。
+- 请求前刷新上下文后仍保留替换结果，同时保留路径、GUI 地址和操作说明；全部 Antigravity 模型默认开启，只需一个开关即可关闭。
+- 新增重复身份句、上下文刷新、卸载恢复与连续两轮对话回归验证；不将本次修改宣称为所有上游 429 的已确认修复。
+
 ## [0.1.9] - 2026-11-15
 
 Combined record for the single #47 compatibility fix shipped across 0.1.8–0.1.9. Version 0.1.8 was published with an unintended disabled default and is superseded by 0.1.9; it is not a separate feature release. Existing npm versions, tags, and artifacts are retained unchanged.
