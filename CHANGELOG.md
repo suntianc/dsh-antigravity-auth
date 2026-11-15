@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.8-fork.1] - 2026-11-15
 
 - Bump `@cortexkit/antigravity-auth-core` to `3.1.2`, bringing the Gemini 4 Argon, Carbon and Hydrogen routes and the Claude Opus/Sonnet 5.5 routes into the public catalog. Each Gemini 4 family advertises its captured effort tiers and resolves to `gemini-4-<family>-<tier>`; the wire route already names its effort, so no explicit `thinkingConfig` is sent.
 - Retire the model ids the 3.x core no longer serves (`gemini-3.5/3.6/3.7-flash`, `gemini-3.1-pro`, the Claude 4.6 routes) from the snapshot, and move the live-gate and video defaults to `antigravity-gemini-3.8-flash`.
