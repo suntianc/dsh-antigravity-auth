@@ -17,7 +17,7 @@ describe('grounded Antigravity Search', () => {
     try {
       await ctx.plugin(WebRuntime)
       ctx.provide('antigravityAuth', service as never)
-      apply(ctx, { enabled: true, model: 'antigravity-gemini-3.7-flash', maxResults: 10 })
+      apply(ctx, { enabled: true, model: 'antigravity-gemini-3.8-flash', maxResults: 10 })
       await vi.waitFor(async () => {
         await expect(ctx.web.search({ query: 'offline' })).rejects.toMatchObject({ code: 'ANTIGRAVITY_SEARCH_AUTH_REQUIRED' })
       })
@@ -43,7 +43,7 @@ describe('grounded Antigravity Search', () => {
       await ctx.plugin(WebRuntime, { searchProvider: 'other' })
       ctx.provide('antigravityAuth', service as never)
       ctx.web.registerSearchProvider(other)
-      apply(ctx, { enabled: true, model: 'antigravity-gemini-3.7-flash', maxResults: 10 })
+      apply(ctx, { enabled: true, model: 'antigravity-gemini-3.8-flash', maxResults: 10 })
       await vi.waitFor(() => expect(service.status).toHaveBeenCalled())
       await new Promise<void>(resolve => setImmediate(resolve))
       expect(() => ctx.web.registerSearchProvider({ ...other, id: 'antigravity' })).toThrow()
@@ -112,7 +112,7 @@ describe('grounded Antigravity Search', () => {
         effect: vi.fn((setup: () => () => Promise<void>) => setup()),
       }
 
-      const config = { enabled: true, model: 'antigravity-gemini-3.7-flash', maxResults: 10 }
+      const config = { enabled: true, model: 'antigravity-gemini-3.8-flash', maxResults: 10 }
       apply(ctx as never, config as never)
 
       // 1. Initial unauthenticated state: Search provider is not registered and the selection is untouched.

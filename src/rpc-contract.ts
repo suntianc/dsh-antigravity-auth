@@ -142,11 +142,11 @@ export function parseUsageResult(value: unknown): QuotaStatusView | undefined {
   if (value.checkedAt !== undefined && !isIsoTime(value.checkedAt)) return undefined
   if (value.state === 'available' && value.groups === undefined) return undefined
   if (value.groups !== undefined) {
-    if (!Array.isArray(value.groups) || value.groups.length === 0 || value.groups.length > 2) return undefined
+    if (!Array.isArray(value.groups) || value.groups.length === 0 || value.groups.length > 3) return undefined
     const groups: QuotaGroupView[] = []
     const groupNames = new Set<string>()
     for (const rawGroup of value.groups) {
-      if (!isRecord(rawGroup) || !hasExactKeys(rawGroup, ['group', 'modelCount', 'windows']) || (rawGroup.group !== 'gemini' && rawGroup.group !== 'non-gemini') || !Number.isSafeInteger(rawGroup.modelCount) || (rawGroup.modelCount as number) < 0 || !Array.isArray(rawGroup.windows)) return undefined
+      if (!isRecord(rawGroup) || !hasExactKeys(rawGroup, ['group', 'modelCount', 'windows']) || (rawGroup.group !== 'gemini' && rawGroup.group !== 'gemini-argon' && rawGroup.group !== 'non-gemini') || !Number.isSafeInteger(rawGroup.modelCount) || (rawGroup.modelCount as number) < 0 || !Array.isArray(rawGroup.windows)) return undefined
       if (groupNames.has(rawGroup.group)) return undefined
       groupNames.add(rawGroup.group)
       const modelCount = rawGroup.modelCount as number

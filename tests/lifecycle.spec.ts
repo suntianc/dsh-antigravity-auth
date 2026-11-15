@@ -189,7 +189,7 @@ describe('bootstrap lifecycle boundary', () => {
       effect: vi.fn((setup: () => () => Promise<void>) => { cleanup = setup() }),
     }
 
-    applySearch(ctx as never, { enabled: true, model: 'antigravity-gemini-3.7-flash', maxResults: 10 })
+    applySearch(ctx as never, { enabled: true, model: 'antigravity-gemini-3.8-flash', maxResults: 10 })
     await new Promise<void>(resolve => setImmediate(resolve))
     expect(registerSearchProvider).not.toHaveBeenCalled()
 
@@ -223,7 +223,7 @@ describe('bootstrap lifecycle boundary', () => {
       effect: vi.fn((setup: () => () => Promise<void>) => setup()),
     }
 
-    applySearch(ctx as never, { enabled: true, model: 'antigravity-gemini-3.7-flash', maxResults: 10 })
+    applySearch(ctx as never, { enabled: true, model: 'antigravity-gemini-3.8-flash', maxResults: 10 })
     statusListener?.()
     pending[1]?.(gateStatus('search', 'poc-pending'))
     await new Promise<void>(resolve => setImmediate(resolve))
@@ -278,7 +278,7 @@ describe('bootstrap lifecycle boundary', () => {
       effect: vi.fn((setup: () => () => Promise<void>) => setup()),
     }
 
-    applyVideo(ctx as never, { enabled: true, model: 'antigravity-gemini-3.7-flash', maxBytes: 1024 })
+    applyVideo(ctx as never, { enabled: true, model: 'antigravity-gemini-3.8-flash', maxBytes: 1024 })
     await new Promise<void>(resolve => setImmediate(resolve))
 
     expect(register).not.toHaveBeenCalled()

@@ -41,8 +41,8 @@ try {
       throw new Error(`package smoke: ${name} is not pinned to the exact development baseline`)
     }
   }
-  if (manifest.dependencies?.['@cortexkit/antigravity-auth-core'] !== '2.2.0'
-    || manifest.devDependencies?.['@cortexkit/antigravity-auth-core'] !== '2.2.0') {
+  if (manifest.dependencies?.['@cortexkit/antigravity-auth-core'] !== '3.1.2'
+    || manifest.devDependencies?.['@cortexkit/antigravity-auth-core'] !== '3.1.2') {
     throw new Error('package smoke: Antigravity core changed without a separate audit')
   }
   const changelog = await readFile(resolve(packageRoot, 'CHANGELOG.md'), 'utf8')

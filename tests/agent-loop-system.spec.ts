@@ -13,7 +13,7 @@ const credential = {
   accessToken: 'offline-access', refreshToken: 'offline-refresh',
   expiresAt: Date.now() + 3_600_000, projectId: 'offline-project',
 }
-const models = ['antigravity-gemini-3.7-flash', 'antigravity-claude-opus-4-6-thinking']
+const models = ['antigravity-gemini-3.8-flash', 'antigravity-claude-opus-5-5']
 
 it.each(models)('preserves the durable system prompt through the V3 AgentLoop for %s', async model => {
   const ctx = new Context()

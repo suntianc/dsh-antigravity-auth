@@ -128,7 +128,7 @@ export class AntigravitySearchProvider implements WebSearchProvider {
 export function buildGroundedSearchPayload(query: string, credential: Pick<HostCredential, 'projectId'>, model = ANTIGRAVITY_SEARCH_MODEL): Record<string, unknown> {
   return {
     project: credential.projectId,
-    model: resolveModelWithTier(model, { cli_first: false }).actualModel,
+    model: resolveModelWithTier(model).actualModel,
     request: {
       contents: [{ role: 'user', parts: [{ text: query }] }],
       tools: [{ googleSearch: {} }],
