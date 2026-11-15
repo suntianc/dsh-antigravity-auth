@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-15
+
+- Add opt-in `promptCompatibility` for all models on provider routes owned by this Antigravity adapter. At public SystemPrompt assembly, replace only the exact default `harness:identity` sentence with a generic coding-assistant sentence; keep truthful HTTP attribution, authentication, endpoints, other instructions, tools, and user content unchanged.
+- Keep compatibility disabled by default, scope it to owned `google-antigravity`/`google` routes, and preserve complete personas and lifecycle disposal. Document that later `agent/request` rerouting is unsupported and direct calls bypassing assembly are unchanged.
+- Cover Gemini, Claude, GPT-OSS, and an unknown future model name with offline assembly tests. Live comparisons covered only Gemini 3.8 Flash and do not establish an upstream-confirmed root cause or a universal 429 fix.
+
 ## [0.1.7] - 2026-11-14
 
 - Fix #47 diagnostics: report HTTP 429 without assuming the displayed weekly quota is exhausted; preserve only bounded, allowlisted provider hints and validated retry delays, without automatic retries.

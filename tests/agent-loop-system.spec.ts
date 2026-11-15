@@ -62,3 +62,37 @@ it.each(models)('preserves ordered system messages and legacy one-shot instructi
   expect(body).toContain('second system instruction')
   expect(body.indexOf('first system instruction')).toBeLessThan(body.indexOf('second system instruction'))
 })
+
+it.each([false, true])('records compatible assembly without user rewrites; documents later reroute=%s', async reroute => {
+  const { mountPromptCompatibility, HARNESS_IDENTITY_SENTENCE } = await import('../src/prompt-compatibility.ts')
+  const ctx = new Context()
+  const requests: string[] = []
+  const adapter = new AntigravityAdapter({ auth: { credential: async () => credential }, transport: { request: async input => {
+    requests.push(String(input.body))
+    return new Response('data: {"response":{"parts":[{"text":"ok"}],"finishReason":"STOP"}}\n\n')
+  } } })
+  try {
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SystemPrompt, { personaPrefix: 'Preserve this instruction.' })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin({ apply: (scope: Context) => mountPromptCompatibility(scope, provider => provider === ANTIGRAVITY_PROVIDER) })
+    ctx.llm.registerAdapter([ANTIGRAVITY_PROVIDER], adapter)
+    if (reroute) ctx.on('agent/request', async (_context, next) => ({ ...await next(), model: 'antigravity-gemini-3.7-flash' }))
+    const agent = await ctx.agentLoop.create(SessionId('prompt-compat-e2e'), { provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.8-flash' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: HARNESS_IDENTITY_SENTENCE }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    expect(requests).toHaveLength(1)
+    const body = JSON.parse(requests[0]!)
+    // Assembly precedes routing: a later reroute keeps the admitted prompt.
+    expect(body.model).toBe(reroute ? 'gemini-3-flash' : 'gemini-3.8-flash-medium')
+    expect(JSON.stringify(body.request.systemInstruction)).toContain('You are an AI coding assistant.')
+    expect(JSON.stringify(body.request.systemInstruction)).not.toContain(HARNESS_IDENTITY_SENTENCE)
+    expect(JSON.stringify(body.request.systemInstruction)).toContain('Preserve this instruction.')
+    expect(JSON.stringify(body.request.contents)).toContain(HARNESS_IDENTITY_SENTENCE)
+    expect(JSON.stringify(agent.session.snapshotEvents().filter(event => event.type === 'system/message'))).toContain('You are an AI coding assistant.')
+  } finally { await ctx.fiber.dispose() }
+})

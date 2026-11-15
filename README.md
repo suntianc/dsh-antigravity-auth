@@ -9,7 +9,7 @@ Use your Antigravity account in [DeepSeek Harness (DSH)](https://github.com/deep
 
 > **Unofficial, experimental, personal use only.** Google does not support third-party Antigravity login tools; your account may be suspended or terminated. Read the [Google FAQ](https://antigravity.google/docs/faq/) and [Additional Terms](https://antigravity.google/terms) before signing in. Private endpoints can change or stop working without notice. Do not rely on this plugin for production workloads.
 
-**Current release:** `0.1.7` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
+**Current release:** `0.1.8` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
 
 [Quick start](#quick-start) · [Using the capabilities](#using-the-capabilities) · [Account commands](#account-commands) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
@@ -40,7 +40,7 @@ Stop the Host using the target profile, then run:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.7
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.8
 dsh plugin --profile web list
 ```
 
@@ -123,3 +123,35 @@ The [bundle patch](cordis.patch.yml) installs four Host rows: `antigravity-auth`
 ## License and community
 
 [MIT](LICENSE) · [LINUX DO (L 站)](https://linux.do/)
+
+## Optional Antigravity prompt compatibility
+
+`promptCompatibility` defaults to `false`. Enable it explicitly on the existing
+`antigravity-auth` row (do not insert a duplicate row):
+
+```yaml
+- id: antigravity-auth
+  config:
+    promptCompatibility: true
+```
+
+For all models on the assembly-time `google-antigravity` route (or the `google`
+alias only when owned by this adapter), the public SystemPrompt assembly hook replaces the exact default
+`harness:identity` sentence with `You are an AI coding assistant.`. This omits
+the host name from that one sentence; truthful HTTP attribution remains unchanged.
+Custom/extended identity sections, complete personas, all other instructions,
+contexts, tools, user content, history, authentication and endpoints are untouched.
+No prompt text is logged by this feature. DSH records the assembled prompt normally.
+Direct adapter/title calls that skip assembly are unchanged. SystemPrompt is optional;
+without that service the option has no effect. Set the option to `false` to disable.
+Assembly precedes the `agent/request` routing waterfall. Plugins that later change
+the provider/model are not supported by this option: the already assembled prompt
+can reach the later route. Keep this option off in such configurations; this feature
+does not rewrite frozen requests to repair routing changes.
+
+Live comparisons covered only Gemini 3.8 Flash, not every model.
+Limited local comparisons associated the default sentence with HTTP 429 and the
+compatible assembly with HTTP 200. This is not an upstream-confirmed cause or a
+quota fix: request ordering and changing capacity remain possible confounders.
+There is no 429-triggered rewrite/retry, account rotation or guarantee of acceptance.
+The option has offline coverage on DSH 0.2.1-rc.5, not full Desktop 0.2.2-rc.3 certification.

@@ -1,6 +1,6 @@
 {
   "name": "dsh-antigravity-auth",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Unofficial Antigravity OAuth capability bundle with local account caching and manual switching for DeepSeek Harness",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
@@ -152,7 +152,8 @@
     "@deepseek-ai/dsh-tools": "*",
     "@deepseek-ai/dsh-web": "*",
     "@deepseek-ai/schemastery": "^3.18.4",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "@deepseek-ai/dsh-system-prompt": "*"
   },
   "devDependencies": {
     "@cortexkit/antigravity-auth-core": "2.2.0",
@@ -206,5 +207,10 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-system-prompt": {
+      "optional": true
+    }
   }
 }

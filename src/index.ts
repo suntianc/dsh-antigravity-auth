@@ -1,5 +1,7 @@
 /** Host half of the private Antigravity bootstrap capability bundle. */
 
+import Schema from '@deepseek-ai/schemastery'
+import { mountPromptCompatibility } from './prompt-compatibility.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type {} from '@deepseek-ai/dsh-client-connection'
@@ -20,8 +22,15 @@ import { mountCapabilityLifecycle } from './capability-lifecycle.ts'
 export const name = 'antigravity-auth'
 export const inject = ['llm', 'attachments']
 
+export interface Config { readonly promptCompatibility?: boolean }
+export const Config = Schema.object({
+  promptCompatibility: Schema.boolean().default(false),
+})
+
 /** Mount the Host-only OAuth service and its guarded account RPC channel. */
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: Config = {}): void {
+  const ownedRoutes = new Set<string>()
+  if (config.promptCompatibility === true) mountPromptCompatibility(ctx, provider => ownedRoutes.has(provider))
   const service = createAntigravityAuthService({
     storePath: defaultAuthStorePath(),
     autoActivateGates: true,
@@ -71,8 +80,9 @@ export function apply(ctx: Context): void {
         routes.push('google')
       }
       const dispose = runtime.llm.registerAdapter(routes, adapter)
+      for (const route of routes) ownedRoutes.add(route)
       return () => {
-        try { dispose() } finally { adapter.invalidateModelCatalog() }
+        try { dispose() } finally { ownedRoutes.clear(); adapter.invalidateModelCatalog() }
       }
     },
     ownsAuth: true,

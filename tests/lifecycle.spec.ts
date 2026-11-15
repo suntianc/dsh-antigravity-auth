@@ -129,7 +129,7 @@ describe('bootstrap lifecycle boundary', () => {
     expect(dispose).toHaveBeenCalledTimes(9)
   })
 
-  it('registers the public LLM adapter only while authenticated Gate 0/L evidence passes', async () => {
+  it.each([{ enabled: false, existingGoogle: false }, { enabled: true, existingGoogle: false }, { enabled: true, existingGoogle: true }])('registers adapters and scopes compatibility to owned routes: %j', async ({ enabled, existingGoogle }) => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-antigravity-lifecycle-'))
     const previousDataHome = process.env.XDG_DATA_HOME
     process.env.XDG_DATA_HOME = root
@@ -147,21 +147,28 @@ describe('bootstrap lifecycle boundary', () => {
       let cleanup: (() => Promise<void>) | undefined
       const disposeAdapter = vi.fn()
       const registerAdapter = vi.fn(() => disposeAdapter)
+      let assemblyHandler: ((input: unknown, context: unknown, next: () => Promise<unknown>) => Promise<{ sections: { text: string }[] }>) | undefined
       const runtime = {
+        on: (_event: string, handler: typeof assemblyHandler) => { assemblyHandler = handler },
         connection: { fetch: { register: vi.fn(() => vi.fn()) } },
         commands: { register: vi.fn(() => vi.fn()) },
-        llm: { registerAdapter, listProviders: vi.fn(() => []) },
+        llm: { registerAdapter, listProviders: vi.fn(() => existingGoogle ? [{ id: 'google' }] : []) },
         provide: vi.fn((_name: string, service: AntigravityAuthService) => { provided = service; return vi.fn(async () => {}) }),
         get: vi.fn((service: string) => service === 'webServer' ? { host: '127.0.0.1' } : undefined),
         inject: vi.fn((_dependencies: readonly string[], callback: (ctx: unknown) => unknown) => callback(runtime)),
         effect: vi.fn((setup: () => () => Promise<void>) => { cleanup = setup() }),
       }
 
-      applyAuth(runtime as never)
+      applyAuth(runtime as never, { promptCompatibility: enabled })
       await vi.waitFor(() => expect(registerAdapter).toHaveBeenCalledOnce())
+      const identity = 'You are an AI agent powered by DeepSeek Harness.'
+      const input = { sections: [{ name: 'harness:identity', text: identity }], contexts: [], tools: [], variables: { provider: 'google', model: 'antigravity-gemini-3.8-flash' } }
+      expect(Boolean(assemblyHandler)).toBe(enabled)
+      if (assemblyHandler) expect((await assemblyHandler(input, {}, async () => input)).sections[0]?.text).toBe(existingGoogle ? identity : 'You are an AI coding assistant.')
 
       await provided?.recordLlmFamilyGate('claude', 'protocol-drift')
       await vi.waitFor(() => expect(disposeAdapter).toHaveBeenCalledOnce())
+      if (assemblyHandler) expect((await assemblyHandler(input, {}, async () => input)).sections[0]?.text).toBe(identity)
       await cleanup?.()
     } finally {
       if (previousDataHome === undefined) delete process.env.XDG_DATA_HOME
