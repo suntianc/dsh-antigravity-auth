@@ -134,7 +134,8 @@ rules of the local `dsh-prompt-compat` plugin:
 | --- | --- |
 | `harness:identity` section | Replace each `You are an AI agent powered by DeepSeek Harness.` with `You are an AI coding assistant.`, preserving any surrounding instructions. |
 | `harness:source` and `app:web-surface` sections | Replace every `DeepSeek Harness` with `host application`. |
-| The two identically named runtime contexts | Apply the same replacement and retain it through DSH's admission-time context refresh. |
+| `app:web-surface` browser-context sentence | Replace `The browser provides no implicit DOM, route, or screenshot context.` with `The page provides no implicit markup, route, or capture context.`. Replaying a refused envelope narrowed one refusal to that sentence alone, with no tools and no history; the reworded form was served. |
+| The two identically named runtime contexts | Apply the same replacements and retain them through DSH's admission-time context refresh. |
 
 Paths, GUI URLs, interpolation flags and other instructions are preserved. Other
 providers, complete personas, user/project content, tools and stored history remain

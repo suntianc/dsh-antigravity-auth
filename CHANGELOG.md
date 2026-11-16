@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Also reword the `app:web-surface` browser-context sentence of `@deepseek-ai/dsh-harness-dev-context` (`The browser provides no implicit DOM, route, or screenshot context.`) when prompt compatibility transforms that section. Replaying a refused `v1internal:streamGenerateContent` envelope reproduced the 429 with that sentence alone as the whole `systemInstruction`, with no tools and no history, while the same request without `systemInstruction` was served; dropping any one of `browser`, `DOM` or `screenshot` was also served. The 0.1.10 brand replacement leaves this sentence intact, so a prompt with no remaining `DeepSeek Harness` occurrence can still be refused. Measured on one route with one account; not an upstream-confirmed cause and not a general 429 fix. The durable fix belongs in `dsh-harness-dev-context`, which owns the text.
+
+- 提示兼容在处理 `app:web-surface` 段时，同时改写 `@deepseek-ai/dsh-harness-dev-context` 的浏览器上下文句（`The browser provides no implicit DOM, route, or screenshot context.`）。重放被拒的 `v1internal:streamGenerateContent` 请求可复现：仅保留该句作为 `systemInstruction`（无工具、无历史）仍返回 429，而去掉 `systemInstruction` 返回 200；去掉 `browser`、`DOM`、`screenshot` 中任意一个词也返回 200。0.1.10 的品牌替换不会改动该句，因此即使请求中已无 `DeepSeek Harness` 仍可能被拒。该结论基于单一路由与单一账号的观测，不构成上游确认的成因，也不是对所有 429 的修复；根本修复应在拥有该文本的 `dsh-harness-dev-context`。
+
 ## [0.1.10] - 2026-11-15
 
 - Expand #47 prompt compatibility to the built-in rules of `dsh-prompt-compat`: replace the default identity sentence within extended sections, and neutralize the host name in `harness:source` / `app:web-surface` sections and runtime contexts.

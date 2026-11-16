@@ -2,7 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt, { renderContextSnapshot, renderPrompt, type PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import { expect, it } from 'vitest'
 import { Config } from '../src/index.ts'
-import { compatiblePromptAssembly, HARNESS_IDENTITY_SENTENCE, mountPromptCompatibility } from '../src/prompt-compatibility.ts'
+import { BROWSER_SURFACE_SENTENCE, compatiblePromptAssembly, HARNESS_IDENTITY_SENTENCE, mountPromptCompatibility } from '../src/prompt-compatibility.ts'
 
 it('enables compatibility on upgrade without configuration and allows explicit opt-out', () => {
   expect(Config({}).promptCompatibility).toBe(true)
@@ -17,7 +17,7 @@ it('applies the reference rules on owned routes without mutating input or unrela
     ctx.systemPrompt.variable('provider', () => 'google-antigravity')
     ctx.systemPrompt.variable('model', () => 'antigravity-gemini-3.8-flash')
     ctx.systemPrompt.section({ name: 'harness:source', order: 900, text: 'DeepSeek Harness: use pwd. DeepSeek Harness source: {{source}}.' })
-    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: 'DeepSeek Harness GUI: keep the existing server.' })
+    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: `DeepSeek Harness GUI: keep the existing server. ${BROWSER_SURFACE_SENTENCE}` })
     ctx.systemPrompt.section({ name: 'tool:bash', order: 920, text: HARNESS_IDENTITY_SENTENCE })
     ctx.systemPrompt.context({ name: 'harness:source', order: 200, text: 'Current DeepSeek Harness checkout: "/safe/app".', interpolate: false })
     ctx.systemPrompt.context({ name: 'app:web-surface', order: 210, text: 'DeepSeek Harness GUI: "http://127.0.0.1:1234".', interpolate: false })
@@ -30,7 +30,7 @@ it('applies the reference rules on owned routes without mutating input or unrela
     expect(JSON.stringify(input)).toBe(before)
     expect(output.sections.find(s => s.name === 'harness:identity')?.text).toBe('You are an AI coding assistant.')
     expect(output.sections.find(s => s.name === 'harness:source')?.text).toBe('host application: use pwd. host application source: {{source}}.')
-    expect(output.sections.find(s => s.name === 'app:web-surface')?.text).toBe('host application GUI: keep the existing server.')
+    expect(output.sections.find(s => s.name === 'app:web-surface')?.text).toBe('host application GUI: keep the existing server. The page provides no implicit markup, route, or capture context.')
     expect(output.sections.find(s => s.name === 'tool:bash')).toBe(input.sections.find(s => s.name === 'tool:bash'))
     expect(output.contexts.find(s => s.name === 'sandbox:policy')).toBe(input.contexts.find(s => s.name === 'sandbox:policy'))
     expect(output.contexts.find(s => s.name === 'antigravity-prompt-compat:harness:source')).toEqual({ ...input.contexts.find(s => s.name === 'harness:source'), name: 'antigravity-prompt-compat:harness:source', text: 'Current host application checkout: "/safe/app".' })
@@ -77,7 +77,7 @@ it.each(['antigravity-gemini-3.8-flash', 'antigravity-gemini-3.7-flash', 'antigr
   try {
     await ctx.plugin(SystemPrompt, {})
     ctx.systemPrompt.section({ name: 'harness:source', order: 900, text: 'DeepSeek Harness: use pwd before editing.' })
-    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: 'DeepSeek Harness: keep the current GUI URL.' })
+    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: `DeepSeek Harness: keep the current GUI URL. ${BROWSER_SURFACE_SENTENCE}` })
     ctx.systemPrompt.context({ name: 'harness:source', order: 200, text: 'DeepSeek Harness checkout: "/safe/app".', interpolate: false })
     ctx.systemPrompt.context({ name: 'app:web-surface', order: 210, text: 'DeepSeek Harness GUI: "http://127.0.0.1:1234".', interpolate: false })
     ctx.systemPrompt.context({ name: 'sandbox:policy', order: 100, text: 'Only the workspace is writable.', required: true })
@@ -89,6 +89,8 @@ it.each(['antigravity-gemini-3.8-flash', 'antigravity-gemini-3.7-flash', 'antigr
     expect(renderPrompt(assembly)).toContain('You are an AI coding assistant.')
     expect(renderPrompt(assembly)).not.toContain('DeepSeek Harness')
     expect(renderPrompt(assembly)).toContain('use pwd before editing.')
+    expect(renderPrompt(assembly)).not.toContain(BROWSER_SURFACE_SENTENCE)
+    expect(renderPrompt(assembly)).toContain('The page provides no implicit markup, route, or capture context.')
     const refreshed = renderContextSnapshot(ctx.systemPrompt.refreshContext(assembly))
     expect(refreshed).not.toContain('DeepSeek Harness')
     expect(refreshed).toContain('/safe/app')

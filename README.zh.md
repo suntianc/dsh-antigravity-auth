@@ -133,6 +133,7 @@ pnpm run check
 | --- | --- |
 | `harness:identity` 身份段 | 将每处 `You are an AI agent powered by DeepSeek Harness.` 替换为 `You are an AI coding assistant.`，保留段内其他指令。 |
 | `harness:source`、`app:web-surface` 说明段 | 将其中所有 `DeepSeek Harness` 替换为 `host application`。 |
+| `app:web-surface` 浏览器上下文句 | 将 `The browser provides no implicit DOM, route, or screenshot context.` 替换为 `The page provides no implicit markup, route, or capture context.`。重放被拒请求时，拒绝可缩小到仅此一句（无工具、无历史）；改写后的句子返回 200。 |
 | 上述两个同名运行时上下文 | 同样替换，并在 DSH 请求准入刷新上下文后保留结果。 |
 
 路径、GUI 地址、插值标记和其他操作说明均保留。其他 provider、完整 persona、
