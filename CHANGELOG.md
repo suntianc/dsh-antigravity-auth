@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- On owned routes, also replace the exact `app:web-surface` browser sentence `The browser provides no implicit DOM, route, or screenshot context.` with an equivalent wording in sections and runtime contexts. The upstream private endpoint currently answers requests containing that exact sentence with HTTP 429 RESOURCE_EXHAUSTED even while the displayed quota is non-zero; this reproduces and does not establish an upstream-confirmed cause or universal fix for HTTP 429.
+
+- 在自有路由上，同时把 `app:web-surface` 中的固定浏览器说明句 `The browser provides no implicit DOM, route, or screenshot context.` 在说明段和运行时上下文中替换为等效表述。上游私有端点目前会对包含该原句的请求返回 HTTP 429 RESOURCE_EXHAUSTED，即使页面显示配额仍有余量；本条为复现记录，不宣称确认上游成因，也不保证修复所有 429。
+
 ## [0.1.10] - 2026-11-15
 
 - Expand #47 prompt compatibility to the built-in rules of `dsh-prompt-compat`: replace the default identity sentence within extended sections, and neutralize the host name in `harness:source` / `app:web-surface` sections and runtime contexts.

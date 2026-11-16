@@ -134,6 +134,7 @@ rules of the local `dsh-prompt-compat` plugin:
 | --- | --- |
 | `harness:identity` section | Replace each `You are an AI agent powered by DeepSeek Harness.` with `You are an AI coding assistant.`, preserving any surrounding instructions. |
 | `harness:source` and `app:web-surface` sections | Replace every `DeepSeek Harness` with `host application`. |
+| `app:web-surface` browser sentence | Replace each `The browser provides no implicit DOM, route, or screenshot context.` with `The browser tool has no DOM, route, or screenshot context available to it by default.`, preserving surrounding instructions, in these sections and runtime contexts. The upstream endpoint currently answers requests containing that exact sentence with HTTP 429 `RESOURCE_EXHAUSTED` even while the displayed quota is non-zero. |
 | The two identically named runtime contexts | Apply the same replacement and retain it through DSH's admission-time context refresh. |
 
 Paths, GUI URLs, interpolation flags and other instructions are preserved. Other

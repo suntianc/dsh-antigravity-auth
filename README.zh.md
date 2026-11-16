@@ -133,6 +133,7 @@ pnpm run check
 | --- | --- |
 | `harness:identity` 身份段 | 将每处 `You are an AI agent powered by DeepSeek Harness.` 替换为 `You are an AI coding assistant.`，保留段内其他指令。 |
 | `harness:source`、`app:web-surface` 说明段 | 将其中所有 `DeepSeek Harness` 替换为 `host application`。 |
+| `app:web-surface` 固定浏览器说明句 | 在上述说明段和运行时上下文中，将 `The browser provides no implicit DOM, route, or screenshot context.` 替换为 `The browser tool has no DOM, route, or screenshot context available to it by default.`，保留周围其他指令。上游目前会对包含该原句的请求返回 HTTP 429 `RESOURCE_EXHAUSTED`，即使页面显示的配额仍有余量。 |
 | 上述两个同名运行时上下文 | 同样替换，并在 DSH 请求准入刷新上下文后保留结果。 |
 
 路径、GUI 地址、插值标记和其他操作说明均保留。其他 provider、完整 persona、

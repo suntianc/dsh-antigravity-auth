@@ -4,6 +4,8 @@ import type { AssembleContext, PromptAssembly } from '@deepseek-ai/dsh-system-pr
 
 export const HARNESS_IDENTITY_SENTENCE = 'You are an AI agent powered by DeepSeek Harness.'
 const COMPATIBLE_IDENTITY_SENTENCE = 'You are an AI coding assistant.'
+const BROWSER_SURFACE_SENTENCE = 'The browser provides no implicit DOM, route, or screenshot context.'
+const COMPATIBLE_BROWSER_SURFACE_SENTENCE = 'The browser tool has no DOM, route, or screenshot context available to it by default.'
 
 /** Transform the named identity contributions while retaining their instructions.
  * Route scope is assembly-time only; later agent/request rerouting is unsupported.
@@ -18,7 +20,7 @@ export function compatiblePromptAssembly(
   if ((provider !== 'google-antigravity' && provider !== 'google') || !ownsRoute(provider)) return assembly
   const transformText = (name: string, text: string): string => {
     if (name === 'harness:identity') return text.replaceAll(HARNESS_IDENTITY_SENTENCE, COMPATIBLE_IDENTITY_SENTENCE)
-    if (name === 'harness:source' || name === 'app:web-surface') return text.replaceAll('DeepSeek Harness', 'host application')
+    if (name === 'harness:source' || name === 'app:web-surface') return text.replaceAll('DeepSeek Harness', 'host application').replaceAll(BROWSER_SURFACE_SENTENCE, COMPATIBLE_BROWSER_SURFACE_SENTENCE)
     return text
   }
   let changed = false

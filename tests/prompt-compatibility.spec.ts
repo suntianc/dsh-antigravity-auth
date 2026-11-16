@@ -57,6 +57,25 @@ it('applies the reference rules on owned routes without mutating input or unrela
   } finally { await ctx.fiber.dispose() }
 })
 
+it('rewrites the browser web-surface sentence that upstream answers with 429 on owned routes', () => {
+  // The upstream private endpoint answers requests whose system instruction contains
+  // this exact DSH web-surface sentence with HTTP 429 RESOURCE_EXHAUSTED while quota remains.
+  const browserSentence = 'The browser provides no implicit DOM, route, or screenshot context.'
+  const input: PromptAssembly = {
+    sections: [{ name: 'app:web-surface', text: `GUI note: ${browserSentence} Starting another server does not update this GUI.` }],
+    contexts: [{ name: 'app:web-surface', text: `Web GUI URL. ${browserSentence}`, interpolate: false }],
+    variables: { provider: 'google-antigravity' }, tools: [],
+  }
+  const output = compatiblePromptAssembly(input, {}, () => true)
+  expect(output.sections[0]?.text).toBe('GUI note: The browser tool has no DOM, route, or screenshot context available to it by default. Starting another server does not update this GUI.')
+  expect(output.contexts.find(s => s.name === 'antigravity-prompt-compat:app:web-surface')?.text).toBe('Web GUI URL. The browser tool has no DOM, route, or screenshot context available to it by default.')
+  expect(output.sections[0]?.text).not.toContain(browserSentence)
+  expect(compatiblePromptAssembly(output, {}, () => true)).toBe(output)
+  expect(compatiblePromptAssembly(input, {}, () => false)).toBe(input)
+  const otherProvider = { ...input, variables: { provider: 'other' } }
+  expect(compatiblePromptAssembly(otherProvider, {}, () => true)).toBe(otherProvider)
+})
+
 it('preserves no-match assemblies and rejects context snapshot collisions without disclosing text', () => {
   const input: PromptAssembly = {
     sections: [{ name: 'harness:identity', text: 'A custom persona mentioning DeepSeek Harness.' }],
