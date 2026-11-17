@@ -48,6 +48,8 @@ dsh plugin --profile web list
 
 ### 3. 登录
 
+> **登录前检查网络：**如果出现“不能安全登录”、授权超时，或浏览器授权完成后 DSH 仍登录失败，请先查看[网络与代理配置](#network-and-proxy)。需要代理的环境可尝试 Clash / Mihomo 的 TUN 模式，并将 `127.0.0.1`、`localhost` 保持为直连。
+
 1. 打开 **设置 → Antigravity**，点击**开始 Antigravity 登录**。启动登录会记录对上述非官方通道风险的确认。
 2. 在 Host 所在机器的浏览器中完成 Google 授权。若新标签页被拦截，点击设置卡片中的**打开 Google 授权页面**。
 3. 回到 DSH 检查登录结果，用 `/anti status` 查看详细能力状态。若授权过期，取消后重试或重新发起登录。
@@ -94,8 +96,66 @@ dsh plugin --profile web list
 | 回调端口被占用，或授权过期 | 确认占用 `127.0.0.1:51121` 的进程，仅在安全时关闭它，再重新登录。过期或已取消的授权链接不能复用。 |
 | 已登录，但能力不可用 | 检查项目是否可用、能力状态、启用开关和 Host 设置范围。登录成功不代表后端支持所有能力。 |
 | 搜索仍使用其他提供方 | 将 Host 的网页搜索提供方设为 `antigravity`；插件会保留已有选择。 |
-| `invalid_grant` / 要求登录、HTTP 403 或 HTTP 429 | 授权失效或撤销后重新登录；403 检查账号权限；429 等待额度或限流恢复。插件不会自动切换账号绕过限制。 |
+| “不能安全登录”、连接超时、`offline` 或代理连接失败 | 按下方[网络与代理配置](#network-and-proxy)检查 Host 出站连接、本机地址绕过规则和代理端口。 |
+| `invalid_grant` / 要求登录或 HTTP 403 | 授权失效或撤销后重新登录；403 检查账号访问权限和脱敏错误提示。 |
+| HTTP 429 / `RESOURCE_EXHAUSTED` | 先升级至包含提示兼容修复的 `0.1.11` 或更新版本，并重启 Host（见 [#47](https://github.com/suntianc/dsh-antigravity-auth/issues/47)）。刷新额度，查看错误原因和 `Retry-After`；明确为限流时按提示等待。 |
 | `protocol-drift`、视频不受支持或模型异常 | 私有接口可能已变更。查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [Issues](https://github.com/suntianc/dsh-antigravity-auth/issues)。反馈时提供插件/DSH 版本、系统及安全的错误码或 HTTP 状态，不要附带凭据或 OAuth 链接。 |
+
+<a id="network-and-proxy"></a>
+
+### 网络与代理配置
+
+登录涉及三个连接：浏览器打开 Google 授权页面、浏览器回到本机 `127.0.0.1:51121`、DSH Host 向 Google 换取凭据并访问 Cloud Code 服务。浏览器与 Host 可以使用不同的代理设置，排查时应分别检查。
+
+[#47 的网络反馈](https://github.com/suntianc/dsh-antigravity-auth/issues/47#issuecomment-6896816447)建议尝试 Clash TUN；[#27 的反馈者](https://github.com/suntianc/dsh-antigravity-auth/issues/27#issuecomment-5637017374)则确认，设置本机 `NO_PROXY` 后只开系统代理也能登录。可按下面三种方案排查。
+
+**方案一：使用 Clash / Mihomo TUN 模式覆盖 Host 流量**
+
+在代理客户端中启用 TUN，并确认规则允许 Google OAuth 与 Cloud Code 的连接通过可用出口；本机 `127.0.0.1`、`localhost` 和 DSH Web 地址应直连。完全退出并重新启动 DSH Host，再发起一次新的登录。适合浏览器能打开授权页、Host 仍超时，或登录后模型请求无法连接的情况。
+
+**方案二：让本机回调和 DSH 界面绕过代理**
+
+在代理客户端的绕过列表中加入 `127.0.0.1`、`localhost`，并给启动 Host 的环境设置 `NO_PROXY` / `no_proxy`。以下示例会保留已有排除项。Windows PowerShell：
+
+```powershell
+$env:NO_PROXY = (@($env:NO_PROXY, $env:no_proxy, "127.0.0.1", "localhost") | Where-Object { $_ }) -join ","
+$env:no_proxy = $env:NO_PROXY
+dsh web
+```
+
+macOS / Linux shell：
+
+```sh
+export NO_PROXY="${NO_PROXY:+${NO_PROXY},}${no_proxy:+${no_proxy},}127.0.0.1,localhost"
+export no_proxy="$NO_PROXY"
+dsh web
+```
+
+从**设置变量的同一个终端**启动 Host。上面以 `dsh web` 为例；桌面版应先完全退出，再通过能继承这些变量的实际启动方式运行。已经运行的 Host，以及从桌面图标启动的应用，不会自动继承另一个终端中新设置的变量。代理客户端自身的绕过规则也要检查，因为浏览器不一定读取这些环境变量。
+
+**方案三：为插件私有请求显式指定 HTTP 代理**
+
+当前插件的模型、额度、项目发现、搜索、图片和视频私有请求支持 HTTP CONNECT 代理。将下面的 `7890` 替换为代理客户端实际的 **HTTP 或 Mixed 端口**，并保留方案二的本机绕过规则。PowerShell：
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+dsh web
+```
+
+macOS / Linux shell：
+
+```sh
+export HTTPS_PROXY="http://127.0.0.1:7890"
+dsh web
+```
+
+读取顺序为 `HTTPS_PROXY` → `https_proxy` → `ALL_PROXY` → `all_proxy`，采用第一个已设置的值；`NO_PROXY` 优先于 `no_proxy`。该传输层接受 `http://` 代理地址，使用 CONNECT 隧道连接 HTTPS 目标；不支持 `socks5://` / `https://` 代理地址，也不单独读取 `HTTP_PROXY` 或自动读取系统代理/PAC。检查是否有旧的高优先级变量覆盖了新设置。
+
+OAuth 换取/刷新凭据和账号信息查询使用 Host 的 `fetch`，其代理行为取决于 Host/Node 的配置。上述私有请求代理配置若已解决模型连接、登录仍超时，请检查 Host 的代理支持，或采用方案一覆盖其出站流量。
+
+仍有问题时，先按失败阶段定位：授权页面打不开，检查浏览器网络；回调失败，检查本机绕过规则和 `51121` 端口；回调完成后超时，检查 Host 出站连接。可在代理客户端连接列表中查看 `accounts.google.com`、`oauth2.googleapis.com`、`www.googleapis.com`、`daily-cloudcode-pa.googleapis.com` 和 `cloudcode-pa.googleapis.com` 的路由是否符合预期。
+
+反馈时提供系统、DSH/插件版本、启动方式、失败阶段、使用的代理模式及脱敏错误。HTTP 429 按上方专门条目排查。不要提交凭据文件、代理密码、OAuth 链接或完整抓包。
 
 ## 安全与边界
 
@@ -120,6 +180,10 @@ pnpm run check
 - [设计规范](docs/specs/antigravity-auth-capability-bundle.md)与[研究记录](docs/research/antigravity-auth-plugin.md)
 - [发布规范](docs/release-policy.md)与 [Release 模板](docs/release-notes.template.md)
 - [更新日志](CHANGELOG.md) · [GitHub Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) · [反馈问题](https://github.com/suntianc/dsh-antigravity-auth/issues)
+
+## 贡献者与致谢
+
+- 感谢 [@krymov](https://github.com/krymov) 定位 [#47](https://github.com/suntianc/dsh-antigravity-auth/issues/47) 中已复现的 HTTP 429 场景所涉及的浏览器上下文句，并在 [PR #48](https://github.com/suntianc/dsh-antigravity-auth/pull/48) 中提供替换方案和回归测试。该修复已整合进 `0.1.11`，同时补充了路径／URL 保护和本地验证，后续版本继续保留。
 
 ## 许可与社区
 

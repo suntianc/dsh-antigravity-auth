@@ -48,6 +48,8 @@ Replace `web` with your actual profile, such as `desktop`. Confirm the listed ve
 
 ### 3. Sign in
 
+> **Check networking before signing in:** if you see a “could not sign in safely” error, an authorization timeout, or DSH still fails after browser authorization, see [Network and proxy setup](#network-and-proxy). Where a proxy is required, try Clash / Mihomo TUN mode and keep `127.0.0.1` and `localhost` on a direct route.
+
 1. Open **Settings → Antigravity** and choose **Start Antigravity login**. Starting login records acknowledgement of the unofficial-channel risk above.
 2. Complete Google authorization in the browser on the Host machine. If the new tab is blocked, use **Open the Google authorization page** in the settings card.
 3. Return to DSH and check the login result. Run `/anti status` for detailed capability status. If authorization expires, cancel it or start a new login.
@@ -94,8 +96,66 @@ On interactive DSH surfaces that support slash commands, `/anti` is an alias for
 | Callback port in use, or authorization expired | Identify the process using `127.0.0.1:51121`; close it only if safe, then start a fresh login. Expired or cancelled authorization links cannot be reused. |
 | Logged in, but a capability is unavailable | Check project availability, the capability status, its enabled setting, and the Host settings scope. A successful login is not proof that the backend accepts every capability. |
 | Search still uses another provider | Set the Host's Web Search provider to `antigravity`; the plugin preserves the existing selection. |
-| `invalid_grant` / login required, HTTP 403, or HTTP 429 | Sign in again for an expired/revoked grant. For 403, check the account's access; for 429, wait for the quota/rate limit to recover. The plugin does not rotate accounts to bypass limits. |
+| Sign-in safety error, connection timeout, `offline`, or proxy connection failure | Follow [Network and proxy setup](#network-and-proxy) below to check Host outbound traffic, loopback bypass rules, and the proxy port. |
+| `invalid_grant` / login required or HTTP 403 | Sign in again for an expired/revoked grant. For 403, check account access and the sanitized error details. |
+| HTTP 429 / `RESOURCE_EXHAUSTED` | First upgrade to `0.1.11` or newer, which includes the prompt compatibility fix, and restart the Host (see [#47](https://github.com/suntianc/dsh-antigravity-auth/issues/47)). Refresh quota and inspect the error reason and `Retry-After`; wait as directed when the response identifies rate limiting. |
 | `protocol-drift`, unsupported video, or an unexpected model error | Private APIs may have changed. Check [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [Issues](https://github.com/suntianc/dsh-antigravity-auth/issues). Include plugin/DSH versions, platform, and the safe error code or HTTP status. Never attach credentials or OAuth URLs. |
+
+<a id="network-and-proxy"></a>
+
+### Network and proxy setup
+
+Sign-in involves three connections: the browser opens Google's authorization page, the browser returns to `127.0.0.1:51121`, and the DSH Host exchanges credentials and contacts Cloud Code. The browser and Host can use different proxy settings, so check each connection separately.
+
+[Network feedback in #47](https://github.com/suntianc/dsh-antigravity-auth/issues/47#issuecomment-6896816447) suggests trying Clash TUN. [The reporter in #27](https://github.com/suntianc/dsh-antigravity-auth/issues/27#issuecomment-5637017374) confirmed that system proxy mode also worked after excluding loopback addresses with `NO_PROXY`. Use the following three options to troubleshoot.
+
+**Option 1: Cover Host traffic with Clash / Mihomo TUN mode**
+
+Enable TUN in your proxy client and check that its rules route Google OAuth and Cloud Code connections through a working exit. Keep `127.0.0.1`, `localhost`, and the local DSH Web address direct. Fully quit and restart the DSH Host, then begin a new sign-in. This is useful when the browser can open the authorization page but the Host times out, or model connections fail after sign-in.
+
+**Option 2: Bypass the proxy for the callback and local DSH UI**
+
+Add `127.0.0.1` and `localhost` to your proxy client's bypass list and set `NO_PROXY` / `no_proxy` in the environment that starts the Host. These examples preserve existing exclusions. Windows PowerShell:
+
+```powershell
+$env:NO_PROXY = (@($env:NO_PROXY, $env:no_proxy, "127.0.0.1", "localhost") | Where-Object { $_ }) -join ","
+$env:no_proxy = $env:NO_PROXY
+dsh web
+```
+
+macOS / Linux shell:
+
+```sh
+export NO_PROXY="${NO_PROXY:+${NO_PROXY},}${no_proxy:+${no_proxy},}127.0.0.1,localhost"
+export no_proxy="$NO_PROXY"
+dsh web
+```
+
+Start the Host from **the same terminal** where you set the variables. The examples use `dsh web`; for Desktop, fully quit the app and use a launch method that passes these variables to its Host. An already running Host, or an app launched from a desktop icon, does not automatically inherit new variables from another terminal. Check the proxy client's own bypass rules as well, because browsers may not read these environment variables.
+
+**Option 3: Set an explicit HTTP proxy for private requests**
+
+The plugin's private model, quota, project-discovery, search, image, and video requests support HTTP CONNECT proxies. Replace `7890` with your proxy client's actual **HTTP or Mixed port** and retain the loopback exclusions from Option 2. PowerShell:
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+dsh web
+```
+
+macOS / Linux shell:
+
+```sh
+export HTTPS_PROXY="http://127.0.0.1:7890"
+dsh web
+```
+
+The lookup order is `HTTPS_PROXY` → `https_proxy` → `ALL_PROXY` → `all_proxy`, using the first defined value; `NO_PROXY` takes precedence over `no_proxy`. This transport accepts `http://` proxy URLs and tunnels HTTPS targets through CONNECT. It does not support `socks5://` / `https://` proxy URLs, read `HTTP_PROXY` alone, or automatically load OS proxy/PAC settings. Check for an older, higher-priority variable overriding your new setting.
+
+OAuth token exchange/refresh and account-info requests use the Host's `fetch`, whose proxy behavior depends on the Host/Node configuration. If the private-request proxy resolves model connectivity but sign-in still times out, check the Host's proxy support or use Option 1 to cover its outbound traffic.
+
+If problems persist, locate the failing phase: check browser networking when the authorization page cannot open; loopback bypass and port `51121` when the callback fails; and Host outbound networking when it times out after the callback. In your proxy client's connection list, check the routing of `accounts.google.com`, `oauth2.googleapis.com`, `www.googleapis.com`, `daily-cloudcode-pa.googleapis.com`, and `cloudcode-pa.googleapis.com`.
+
+Report the OS, DSH/plugin versions, launch method, failing phase, proxy mode, and sanitized error. Use the dedicated entry above for HTTP 429. Do not include credential files, proxy passwords, OAuth URLs, or full traffic captures.
 
 ## Security and scope
 
@@ -120,6 +180,10 @@ The [bundle patch](cordis.patch.yml) installs four Host rows: `antigravity-auth`
 - [Design specification](docs/specs/antigravity-auth-capability-bundle.md) and [research](docs/research/antigravity-auth-plugin.md)
 - [Release policy](docs/release-policy.md) and [release notes template](docs/release-notes.template.md)
 - [Changelog](CHANGELOG.md) · [GitHub Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) · [Report an issue](https://github.com/suntianc/dsh-antigravity-auth/issues)
+
+## Contributors and acknowledgements
+
+- [@krymov](https://github.com/krymov) identified the browser-context sentence that triggered the reproduced HTTP 429 case in [#47](https://github.com/suntianc/dsh-antigravity-auth/issues/47) and provided the replacement and regression coverage in [PR #48](https://github.com/suntianc/dsh-antigravity-auth/pull/48). The fix was incorporated into `0.1.11`, with additional path/URL protection and local validation, and is retained in subsequent releases.
 
 ## License and community
 
