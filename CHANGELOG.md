@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-11-17
+
 - Bump `@cortexkit/antigravity-auth-core` to `3.1.2`, bringing the Gemini 4 Argon, Carbon and Hydrogen routes and the Claude Opus/Sonnet 5.5 routes into the public catalog. Each Gemini 4 family advertises its captured effort tiers and resolves to `gemini-4-<family>-<tier>`; the wire route already names its effort, so no explicit `thinkingConfig` is sent.
 - Retire the model ids the 3.x core no longer serves (`gemini-3.5/3.6/3.7-flash`, `gemini-3.1-pro`, the Claude 4.6 routes) from the snapshot, and move the live-gate and video defaults to `antigravity-gemini-3.8-flash`.
 - Report the Gemini 4 Argon weekly pool (`gemini-argon-wtu-weekly`) as its own quota group instead of folding it into the shared Gemini pool, matching the Antigravity client's separate "Gemini 4 Argon Weekly Limit". Carbon and Hydrogen have no separate bucket and stay on the shared Gemini pool.
@@ -9,6 +11,11 @@
 - Preserve the 0.1.11 prompt compatibility implementation and its AgentLoop regression checks while moving the reroute fixture to Gemini 4 Carbon.
 - Give Argon, Carbon, and Hydrogen their own effort selectors: Medium defaults for Argon and Carbon, High for Hydrogen, plus Hydrogen's XHigh tier.
 - Adopt the 3.1 surface: `resolveModelWithTier` takes only the model, the request-session store drops its namespace argument and completion hook (3.1 rotates the execution id while building request metadata), and the audited CLI identity advances to `antigravity/cli/1.5.8`.
+
+
+- 升级 core 至 `3.1.2`，新增 Gemini 4 Argon/Carbon/Hydrogen 与 Claude Opus/Sonnet 5.5，移除已退役的 Gemini 3.5/3.6/3.7 Flash、Gemini 3.1 Pro 和 Claude 4.6 路由；已有会话需要重新选择当前模型。
+- 新增三款 Gemini 4 模型的推理档位与输出上限，单独展示 Argon 周额度；Carbon/Hydrogen 使用共享 Gemini 额度。
+- 修复 Claude 5.5 推理档位选择与 `modelName` 目录发现，保留 0.1.11 提示兼容修复，补齐模型退役、档位、目录及中英文额度界面回归验证。
 
 ## [0.1.11] - 2026-11-17
 
