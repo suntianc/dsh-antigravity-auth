@@ -9,7 +9,7 @@
 
 > **非官方、实验性，仅供个人使用。** Google 不支持第三方 Antigravity 登录工具，账号可能被暂停或终止。登录前请阅读 [Google FAQ](https://antigravity.google/docs/faq/) 和 [Additional Terms](https://antigravity.google/terms)。私有接口可能随时变更或失效，请勿用于生产工作负载。
 
-**当前版本：**`0.1.10`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
+**当前版本：**`0.1.11`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
 
 [快速开始](#快速开始) · [使用各项能力](#使用各项能力) · [账号命令](#账号命令) · [常见问题](#常见问题) · [开发](#开发)
 
@@ -40,7 +40,7 @@
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.10
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.11
 dsh plugin --profile web list
 ```
 
@@ -127,12 +127,13 @@ pnpm run check
 ## Antigravity 提示兼容
 
 `promptCompatibility` 默认开启，覆盖本插件 `google-antigravity` 路由及其拥有的
-`google` 别名下的全部模型。处理规则与本地 `dsh-prompt-compat` 默认逻辑一致：
+`google` 别名下的全部模型。处理规则包含本地 `dsh-prompt-compat` 默认身份逻辑及 #47 句子修复：
 
 | 位置 | 替换方式 |
 | --- | --- |
 | `harness:identity` 身份段 | 将每处 `You are an AI agent powered by DeepSeek Harness.` 替换为 `You are an AI coding assistant.`，保留段内其他指令。 |
-| `harness:source`、`app:web-surface` 说明段 | 将其中所有 `DeepSeek Harness` 替换为 `host application`。 |
+| `harness:source`、`app:web-surface` 说明段 | 将 `DeepSeek Harness` 替换为 `host application`，保留引号内的绝对路径和 URL。 |
+| `app:web-surface` 浏览器上下文句 | 将完全匹配的 `The browser provides no implicit DOM, route, or screenshot context.` 替换为 `The page provides no implicit markup, route, or capture context.`，保留引号内的路径和 URL。 |
 | 上述两个同名运行时上下文 | 同样替换，并在 DSH 请求准入刷新上下文后保留结果。 |
 
 路径、GUI 地址、插值标记和其他操作说明均保留。其他 provider、完整 persona、
@@ -149,4 +150,6 @@ pnpm run check
 ```
 
 功能通过公开 SystemPrompt 装配接口生效，跳过装配的直接调用及装配后改变 provider
-的情况不在其范围内。离线验证基线为 DSH 0.2.1-rc.5；本次修改不代表已解决所有上游 429。
+的情况不在其范围内。离线验证基线为 DSH 0.2.1-rc.5。同一最小实现已在 DSH 0.2.2-rc.3
+的真实 desktop 旧失败会话中验证，Gemini 3.8 Flash / Medium 的下一轮成功完成。
+本次修复针对 #47 已复现的句子拒绝场景，其他 429 响应仍需按具体请求诊断。

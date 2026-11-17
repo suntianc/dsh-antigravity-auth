@@ -15,6 +15,49 @@ const credential = {
 }
 const models = ['antigravity-gemini-3.7-flash', 'antigravity-claude-opus-4-6-thinking']
 
+it('repairs the admitted system prompt on the next turn of a previously refused session', async () => {
+  const { mountPromptCompatibility, BROWSER_SURFACE_SENTENCE } = await import('../src/prompt-compatibility.ts')
+  const ctx = new Context()
+  const requests: string[] = []
+  const adapter = new AntigravityAdapter({ auth: { credential: async () => credential }, transport: { request: async input => {
+    requests.push(String(input.body))
+    const system = JSON.stringify(JSON.parse(String(input.body)).request.systemInstruction)
+    return system.includes(BROWSER_SURFACE_SENTENCE)
+      ? new Response('{"error":{"status":"RESOURCE_EXHAUSTED"}}', { status: 429 })
+      : new Response('data: {"response":{"parts":[{"text":"ok"}],"finishReason":"STOP"}}\n\n')
+  } } })
+  try {
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SystemPrompt, { personaPrefix: 'Preserve this instruction.' })
+    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: BROWSER_SURFACE_SENTENCE })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    ctx.llm.registerAdapter([ANTIGRAVITY_PROVIDER], adapter)
+    const agent = await ctx.agentLoop.create(SessionId('prompt-compat-existing-failure'), { provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.8-flash' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    expect(requests).toHaveLength(1)
+    expect(requests[0]).toContain(BROWSER_SURFACE_SENTENCE)
+    const historicalEvents = JSON.stringify(agent.session.snapshotEvents())
+    expect(historicalEvents).toContain('RATE_LIMIT')
+    await ctx.plugin({ apply: (scope: Context) => mountPromptCompatibility(scope, provider => provider === ANTIGRAVITY_PROVIDER) })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Continue.' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    expect(requests).toHaveLength(2)
+    const repaired = JSON.parse(requests[1]!)
+    expect(JSON.stringify(repaired.request.systemInstruction)).not.toContain(BROWSER_SURFACE_SENTENCE)
+    expect(JSON.stringify(repaired.request.systemInstruction)).toContain('The page provides no implicit markup, route, or capture context.')
+    expect(JSON.stringify(repaired.request.contents)).toContain('hello')
+    expect(JSON.stringify(repaired.request.contents)).toContain('Continue.')
+    // The old failure remains an immutable event; only the newly admitted surface changes.
+    expect(JSON.stringify(agent.session.snapshotEvents()).includes(historicalEvents.slice(1, -1))).toBe(true)
+    expect(JSON.stringify(agent.session.snapshotEvents().at(-1))).not.toContain('RATE_LIMIT')
+  } finally { await ctx.fiber.dispose() }
+})
+
 it.each(models)('preserves the durable system prompt through the V3 AgentLoop for %s', async model => {
   const ctx = new Context()
   const requests: string[] = []
@@ -64,7 +107,7 @@ it.each(models)('preserves ordered system messages and legacy one-shot instructi
 })
 
 it.each([false, true])('records compatible assembly without user rewrites; documents later reroute=%s', async reroute => {
-  const { mountPromptCompatibility, HARNESS_IDENTITY_SENTENCE } = await import('../src/prompt-compatibility.ts')
+  const { mountPromptCompatibility, HARNESS_IDENTITY_SENTENCE, BROWSER_SURFACE_SENTENCE } = await import('../src/prompt-compatibility.ts')
   const ctx = new Context()
   const requests: string[] = []
   const adapter = new AntigravityAdapter({ auth: { credential: async () => credential }, transport: { request: async input => {
@@ -77,8 +120,8 @@ it.each([false, true])('records compatible assembly without user rewrites; docum
     await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(SystemPrompt, { personaPrefix: 'Preserve this instruction.' })
     ctx.systemPrompt.section({ name: 'harness:source', order: 900, text: 'DeepSeek Harness: use pwd before editing.' })
-    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: 'DeepSeek Harness: use the current GUI.' })
-    ctx.systemPrompt.context({ name: 'harness:source', order: 200, text: 'DeepSeek Harness checkout: "/safe/app".', interpolate: false })
+    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: `DeepSeek Harness: use the current GUI. ${BROWSER_SURFACE_SENTENCE}` })
+    ctx.systemPrompt.context({ name: 'harness:source', order: 200, text: 'DeepSeek Harness checkout: "/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/".', interpolate: false })
     ctx.systemPrompt.context({ name: 'app:web-surface', order: 210, text: 'DeepSeek Harness GUI: "http://127.0.0.1:1234".', interpolate: false })
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(AgentRegistry)
@@ -87,7 +130,7 @@ it.each([false, true])('records compatible assembly without user rewrites; docum
     ctx.llm.registerAdapter([ANTIGRAVITY_PROVIDER], adapter)
     if (reroute) ctx.on('agent/request', async (_context, next) => ({ ...await next(), model: 'antigravity-gemini-3.7-flash' }))
     const agent = await ctx.agentLoop.create(SessionId('prompt-compat-e2e'), { provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.8-flash' })
-    agent.followup(createUserMessage({ content: [{ type: 'text', text: HARNESS_IDENTITY_SENTENCE }], source: { kind: 'user' } }))
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: `${HARNESS_IDENTITY_SENTENCE} ${BROWSER_SURFACE_SENTENCE}` }], source: { kind: 'user' } }))
     await agent.whenIdle()
     expect(requests).toHaveLength(1)
     const body = JSON.parse(requests[0]!)
@@ -98,10 +141,14 @@ it.each([false, true])('records compatible assembly without user rewrites; docum
     expect(JSON.stringify(body.request.systemInstruction)).toContain('Preserve this instruction.')
     expect(JSON.stringify(body.request.systemInstruction)).toContain('host application: use pwd before editing.')
     expect(JSON.stringify(body.request.systemInstruction)).toContain('host application: use the current GUI.')
+    expect(JSON.stringify(body.request.systemInstruction)).not.toContain(BROWSER_SURFACE_SENTENCE)
+    expect(JSON.stringify(body.request.systemInstruction)).toContain('The page provides no implicit markup, route, or capture context.')
     expect(JSON.stringify(body.request.systemInstruction)).not.toContain('DeepSeek Harness')
     expect(JSON.stringify(body.request.contents)).toContain(HARNESS_IDENTITY_SENTENCE)
+    expect(JSON.stringify(body.request.contents)).toContain(BROWSER_SURFACE_SENTENCE)
     expect(JSON.stringify(body.request.contents)).toContain('host application checkout:')
-    expect(JSON.stringify(body.request.contents)).toContain('/safe/app')
+    expect(JSON.stringify(body.request.contents)).toContain('/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/')
+    expect(JSON.stringify(body.request.contents)).not.toContain('/Applications/host application.app/')
     expect(JSON.stringify(body.request.contents)).toContain('host application GUI:')
     expect(JSON.stringify(body.request.contents)).toContain('http://127.0.0.1:1234')
     expect(JSON.stringify(body.request.contents)).not.toContain('DeepSeek Harness checkout:')
@@ -112,7 +159,11 @@ it.each([false, true])('records compatible assembly without user rewrites; docum
     expect(requests).toHaveLength(2)
     const continued = JSON.parse(requests[1]!)
     expect(JSON.stringify(continued.request.systemInstruction)).not.toContain('DeepSeek Harness')
+    expect(JSON.stringify(continued.request.systemInstruction)).not.toContain(BROWSER_SURFACE_SENTENCE)
+    expect(JSON.stringify(continued.request.systemInstruction)).toContain('The page provides no implicit markup, route, or capture context.')
+    expect(JSON.stringify(continued.request.contents)).toContain(BROWSER_SURFACE_SENTENCE)
     expect(JSON.stringify(continued.request.contents)).toContain('host application checkout:')
+    expect(JSON.stringify(continued.request.contents)).toContain('/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/')
     expect(JSON.stringify(continued.request.contents)).toContain('host application GUI:')
     expect(JSON.stringify(continued.request.contents)).not.toContain('DeepSeek Harness checkout:')
     expect(JSON.stringify(continued.request.contents)).not.toContain('DeepSeek Harness GUI:')

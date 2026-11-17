@@ -2,7 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt, { renderContextSnapshot, renderPrompt, type PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import { expect, it } from 'vitest'
 import { Config } from '../src/index.ts'
-import { compatiblePromptAssembly, HARNESS_IDENTITY_SENTENCE, mountPromptCompatibility } from '../src/prompt-compatibility.ts'
+import { BROWSER_SURFACE_SENTENCE, compatiblePromptAssembly, HARNESS_IDENTITY_SENTENCE, mountPromptCompatibility } from '../src/prompt-compatibility.ts'
 
 it('enables compatibility on upgrade without configuration and allows explicit opt-out', () => {
   expect(Config({}).promptCompatibility).toBe(true)
@@ -71,15 +71,62 @@ it('preserves no-match assemblies and rejects context snapshot collisions withou
   expect(() => compatiblePromptAssembly(collision, {}, () => true)).toThrow('antigravity-auth: a compatible context name is already registered.')
 })
 
+it.each([
+  '/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/',
+  'C:\\Apps\\DeepSeek Harness\\dsh',
+  '\\\\server\\DeepSeek Harness\\dsh',
+  'https://example.test/DeepSeek Harness',
+])('retains the literal location %s in current contexts and legacy source sections', location => {
+  const literal = JSON.stringify(location)
+  const text = `Current DeepSeek Harness checkout: ${literal}. Use this checkout to inspect DeepSeek Harness.`
+  const input: PromptAssembly = {
+    sections: [{ name: 'harness:source', text }],
+    contexts: [{ name: 'harness:source', text, interpolate: false }],
+    variables: { provider: 'google-antigravity' }, tools: [],
+  }
+  const output = compatiblePromptAssembly(input, {}, () => true)
+  const expected = `Current host application checkout: ${literal}. Use this checkout to inspect host application.`
+  expect(output.sections[0]?.text).toBe(expected)
+  expect(output.contexts[0]?.text).toBe(expected)
+  expect(input.sections[0]?.text).toBe(text)
+})
+
+it('rewrites only the exact web-surface sentence while preserving literal locations and other contributions', () => {
+  const compatible = 'The page provides no implicit markup, route, or capture context.'
+  const locations = [
+    `/safe/${BROWSER_SURFACE_SENTENCE}/DeepSeek Harness`,
+    `C:\\Apps\\${BROWSER_SURFACE_SENTENCE}`,
+    `\\\\server\\${BROWSER_SURFACE_SENTENCE}`,
+    `https://example.test/${BROWSER_SURFACE_SENTENCE}`,
+  ].map(location => JSON.stringify(location)).join('\n')
+  const text = `Before ${BROWSER_SURFACE_SENTENCE}\n${locations}\nAfter ${BROWSER_SURFACE_SENTENCE}`
+  const input: PromptAssembly = {
+    sections: [{ name: 'app:web-surface', text }, { name: 'harness:source', text: BROWSER_SURFACE_SENTENCE },
+      { name: 'tool:browser', text: BROWSER_SURFACE_SENTENCE }, { name: 'project:rules', text: BROWSER_SURFACE_SENTENCE }],
+    contexts: [{ name: 'app:web-surface', text: BROWSER_SURFACE_SENTENCE, interpolate: false }],
+    variables: { provider: 'google-antigravity' }, tools: [],
+  }
+  const output = compatiblePromptAssembly(input, {}, () => true)
+  expect(output.sections[0]?.text).toBe(`Before ${compatible}\n${locations}\nAfter ${compatible}`)
+  expect(output.sections.slice(1)).toEqual(input.sections.slice(1))
+  expect(output.contexts[0]).toEqual({ name: 'antigravity-prompt-compat:app:web-surface', text: compatible, interpolate: false })
+  expect(input.sections[0]?.text).toBe(text)
+  expect(compatiblePromptAssembly(output, {}, () => true)).toBe(output)
+  expect(compatiblePromptAssembly(input, {}, () => false)).toBe(input)
+  expect(compatiblePromptAssembly(input, { provider: 'openai' } as never, () => true)).toBe(input)
+  const nearMatch = { ...input, sections: [{ name: 'app:web-surface', text: BROWSER_SURFACE_SENTENCE.replace('DOM', 'dom') }], contexts: [] }
+  expect(compatiblePromptAssembly(nearMatch, {}, () => true)).toBe(nearMatch)
+})
+
 it.each(['antigravity-gemini-3.8-flash', 'antigravity-gemini-3.7-flash', 'antigravity-claude-sonnet-4-6-thinking', 'antigravity-gpt-oss-120b-medium', 'unreleased-next-family-999'])('uses real waterfall and restores owned route for %s', async model => {
   const ctx = new Context()
   let owned = true
   try {
     await ctx.plugin(SystemPrompt, {})
     ctx.systemPrompt.section({ name: 'harness:source', order: 900, text: 'DeepSeek Harness: use pwd before editing.' })
-    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: 'DeepSeek Harness: keep the current GUI URL.' })
+    ctx.systemPrompt.section({ name: 'app:web-surface', order: 910, text: `DeepSeek Harness: keep the current GUI URL. ${BROWSER_SURFACE_SENTENCE}` })
     ctx.systemPrompt.context({ name: 'harness:source', order: 200, text: 'DeepSeek Harness checkout: "/safe/app".', interpolate: false })
-    ctx.systemPrompt.context({ name: 'app:web-surface', order: 210, text: 'DeepSeek Harness GUI: "http://127.0.0.1:1234".', interpolate: false })
+    ctx.systemPrompt.context({ name: 'app:web-surface', order: 210, text: `DeepSeek Harness GUI: "http://127.0.0.1:1234". ${BROWSER_SURFACE_SENTENCE}`, interpolate: false })
     ctx.systemPrompt.context({ name: 'sandbox:policy', order: 100, text: 'Only the workspace is writable.', required: true })
     ctx.systemPrompt.variable('provider', () => 'google-antigravity')
     ctx.systemPrompt.variable('model', () => model)
@@ -89,17 +136,22 @@ it.each(['antigravity-gemini-3.8-flash', 'antigravity-gemini-3.7-flash', 'antigr
     expect(renderPrompt(assembly)).toContain('You are an AI coding assistant.')
     expect(renderPrompt(assembly)).not.toContain('DeepSeek Harness')
     expect(renderPrompt(assembly)).toContain('use pwd before editing.')
+    expect(renderPrompt(assembly)).not.toContain(BROWSER_SURFACE_SENTENCE)
+    expect(renderPrompt(assembly)).toContain('The page provides no implicit markup, route, or capture context.')
     const refreshed = renderContextSnapshot(ctx.systemPrompt.refreshContext(assembly))
     expect(refreshed).not.toContain('DeepSeek Harness')
     expect(refreshed).toContain('/safe/app')
     expect(refreshed).toContain('http://127.0.0.1:1234')
     expect(refreshed).toContain('Only the workspace is writable.')
+    expect(refreshed).not.toContain(BROWSER_SURFACE_SENTENCE)
+    expect(refreshed).toContain('The page provides no implicit markup, route, or capture context.')
     owned = false
     expect(renderPrompt(await ctx.systemPrompt.assemble())).toContain(HARNESS_IDENTITY_SENTENCE)
     owned = true
     await fork.dispose()
     const restored = await ctx.systemPrompt.assemble()
     expect(renderPrompt(restored)).toContain(HARNESS_IDENTITY_SENTENCE)
+    expect(renderPrompt(restored)).toContain(BROWSER_SURFACE_SENTENCE)
     expect(renderContextSnapshot(ctx.systemPrompt.refreshContext(restored))).toContain('DeepSeek Harness')
   } finally { await ctx.fiber.dispose() }
 })

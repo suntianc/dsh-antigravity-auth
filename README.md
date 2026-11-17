@@ -9,7 +9,7 @@ Use your Antigravity account in [DeepSeek Harness (DSH)](https://github.com/deep
 
 > **Unofficial, experimental, personal use only.** Google does not support third-party Antigravity login tools; your account may be suspended or terminated. Read the [Google FAQ](https://antigravity.google/docs/faq/) and [Additional Terms](https://antigravity.google/terms) before signing in. Private endpoints can change or stop working without notice. Do not rely on this plugin for production workloads.
 
-**Current release:** `0.1.10` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
+**Current release:** `0.1.11` (`latest`). See [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) and [CHANGELOG](CHANGELOG.md) for version history.
 
 [Quick start](#quick-start) · [Using the capabilities](#using-the-capabilities) · [Account commands](#account-commands) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
@@ -40,7 +40,7 @@ Stop the Host using the target profile, then run:
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.10
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.11
 dsh plugin --profile web list
 ```
 
@@ -127,13 +127,14 @@ The [bundle patch](cordis.patch.yml) installs four Host rows: `antigravity-auth`
 ## Antigravity prompt compatibility
 
 `promptCompatibility` is enabled by default for every model on this plugin's
-`google-antigravity` route and its owned `google` alias. It follows the built-in
-rules of the local `dsh-prompt-compat` plugin:
+`google-antigravity` route and its owned `google` alias. It includes the built-in
+identity rules of the local `dsh-prompt-compat` plugin and the issue #47 sentence repair:
 
 | Contribution | Replacement |
 | --- | --- |
 | `harness:identity` section | Replace each `You are an AI agent powered by DeepSeek Harness.` with `You are an AI coding assistant.`, preserving any surrounding instructions. |
-| `harness:source` and `app:web-surface` sections | Replace every `DeepSeek Harness` with `host application`. |
+| `harness:source` and `app:web-surface` sections | Replace `DeepSeek Harness` with `host application`, preserving quoted absolute paths and URLs. |
+| `app:web-surface` browser-context sentence | Replace the exact `The browser provides no implicit DOM, route, or screenshot context.` with `The page provides no implicit markup, route, or capture context.`, preserving quoted paths and URLs. |
 | The two identically named runtime contexts | Apply the same replacement and retain it through DSH's admission-time context refresh. |
 
 Paths, GUI URLs, interpolation flags and other instructions are preserved. Other
@@ -151,5 +152,7 @@ No route lists, model filters or extra rules need configuring. To disable it, se
 ```
 
 The feature uses public SystemPrompt assembly. Calls that skip assembly or change
-provider after assembly are outside its scope. Offline checks cover DSH 0.2.1-rc.5;
-this change does not establish that every upstream 429 is resolved.
+provider after assembly are outside its scope. Offline checks cover DSH 0.2.1-rc.5. The same minimal implementation was verified
+on DSH 0.2.2-rc.3 with Gemini 3.8 Flash / Medium in an existing failed desktop
+session: its next turn completed successfully. This repair targets the reproduced
+issue #47 sentence refusal; other 429 responses require their own diagnosis.

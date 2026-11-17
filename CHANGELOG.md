@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-17
+
+- Repair the exact browser-context sentence in `app:web-surface` prompt contributions, addressing the reproduced Gemini 3.8 Flash HTTP 429 case in #47. Thanks to @krymov for isolating the sentence in PR #48.
+- Preserve quoted absolute paths and URLs during host-name and browser-sentence substitutions. Keep the existing transport, identity headers, thinking configuration and dependency graph.
+- Cover recovery on the next turn of a previously refused session. The same minimal implementation completed a real DSH 0.2.2-rc.3 desktop session with Gemini 3.8 Flash / Medium after installation.
+
+- 修复 `app:web-surface` 提示贡献中的完全匹配浏览器上下文句，解决 #47 中已复现的 Gemini 3.8 Flash HTTP 429 场景。感谢 @krymov 在 PR #48 中定位该句。
+- 在主机名称和浏览器句替换时保留引号内的绝对路径与 URL，沿用现有传输、身份请求头、thinking 配置和依赖图。
+- 增加已失败会话下一轮恢复的回归覆盖。同一最小实现安装后，已在真实 DSH 0.2.2-rc.3 desktop 会话中使用 Gemini 3.8 Flash / Medium 完成回复。
+
 ## [0.1.10] - 2026-11-15
 
 - Expand #47 prompt compatibility to the built-in rules of `dsh-prompt-compat`: replace the default identity sentence within extended sections, and neutralize the host name in `harness:source` / `app:web-surface` sections and runtime contexts.
