@@ -36,9 +36,9 @@ function bench(kind: 'search' | 'image' | 'video') {
 
 describe('Host Config Forms registration', () => {
   it.each([
-    { kind: 'search' as const, schema: SearchConfig, apply: applySearch, config: { enabled: true, model: 'antigravity-gemini-3.7-flash', maxResults: 10 } },
+    { kind: 'search' as const, schema: SearchConfig, apply: applySearch, config: { enabled: true, model: 'antigravity-gemini-3.8-flash', maxResults: 10 } },
     { kind: 'image' as const, schema: ImageConfig, apply: applyImage, config: { enabled: true, model: 'antigravity-gemini-3.1-flash-image', n: 1 } },
-    { kind: 'video' as const, schema: VideoConfig, apply: applyVideo, config: { enabled: true, model: 'antigravity-gemini-3.7-flash', maxBytes: 1024 } },
+    { kind: 'video' as const, schema: VideoConfig, apply: applyVideo, config: { enabled: true, model: 'antigravity-gemini-3.8-flash', maxBytes: 1024 } },
   ])('declares volatile $kind settings and suppresses the automatic form', fixture => {
     const { ctx, configure } = bench(fixture.kind)
     fixture.apply(ctx as never, fixture.config as never)

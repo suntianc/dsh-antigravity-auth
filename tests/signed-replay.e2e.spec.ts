@@ -122,7 +122,7 @@ describe('Antigravity signed replay', () => {
       },
     })
 
-    const chunks = await collect(adapter, options('antigravity-gemini-3.7-flash'))
+    const chunks = await collect(adapter, options('antigravity-gemini-3.8-flash'))
     const finish = chunks.at(-1)
     expect(finish).toMatchObject({ type: 'finish' })
     if (finish?.type === 'finish') expect(finish.reason.kind).toBe('stop')
@@ -131,7 +131,7 @@ describe('Antigravity signed replay', () => {
   })
 
   it('prefers a real thinking signature carried by the replayed block', async () => {
-    const model = 'antigravity-gemini-3.7-flash'
+    const model = 'antigravity-gemini-3.8-flash'
     const messages = driftingHistory(model)
     const assistant = messages[1] as unknown as { content: Array<Record<string, unknown>>; source: Record<string, unknown> }
     assistant.source.replayState = {
@@ -166,14 +166,14 @@ describe('Antigravity signed replay', () => {
       },
     })
 
-    await expect(collect(adapter, options('antigravity-gemini-3.7-flash'))).rejects.toMatchObject({
+    await expect(collect(adapter, options('antigravity-gemini-3.8-flash'))).rejects.toMatchObject({
       code: 'PROTOCOL_DRIFT',
       message: expect.stringContaining('HTTP 400'),
     })
   })
 
   it('preserves thinking signatures and image attachments on multi-turn history routed via google alias', async () => {
-    const model = 'antigravity-gemini-3.7-flash'
+    const model = 'antigravity-gemini-3.8-flash'
     const toolCallId = 'call-google-alias-1'
     const messages: Message[] = [
       {

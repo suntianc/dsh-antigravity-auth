@@ -14,7 +14,7 @@ const credential = (token: string): HostCredential => ({
 })
 
 const liveCatalog = () => new Response(JSON.stringify({
-  models: { 'gemini-3.7-flash-medium': { displayName: 'Gemini live' } },
+  models: { 'gemini-3.8-flash-medium': { displayName: 'Gemini live' } },
 }))
 
 const message = (text: string): Message => ({
@@ -26,7 +26,7 @@ const message = (text: string): Message => ({
 
 const options = (overrides: Partial<GenerateOptions> = {}): GenerateOptions => ({
   provider: ANTIGRAVITY_PROVIDER,
-  model: 'antigravity-gemini-3.7-flash',
+  model: 'antigravity-gemini-3.8-flash',
   messages: [message('hello')],
   ...overrides,
 })
@@ -102,11 +102,11 @@ describe('Antigravity LLM adapter', () => {
 
   it.each([
     {
-      family: 'Gemini', model: 'antigravity-gemini-3.7-flash', wireModel: 'gemini-3-flash', errorCode: 'SAFETY',
+      family: 'Gemini', model: 'antigravity-gemini-3.8-flash', wireModel: 'gemini-3.8-flash-medium', errorCode: 'SAFETY',
       event: '{"response":{"parts":[{"text":"gemini-reason","thought":true},{"text":"gemini-answer"},{"functionCall":{"id":"gemini-call","name":"gemini_lookup","args":{"q":"g"}}}],"usageMetadata":{"promptTokenCount":2,"candidatesTokenCount":3},"finishReason":"STOP"}}',
     },
     {
-      family: 'Claude', model: 'antigravity-claude-sonnet-4-6-thinking', wireModel: 'claude-sonnet-4-6', errorCode: 'RESOURCE_EXHAUSTED',
+      family: 'Claude', model: 'antigravity-claude-sonnet-5-5', wireModel: 'claude-sonnet-5-5-low', errorCode: 'RESOURCE_EXHAUSTED',
       event: '{"response":{"parts":[{"text":"claude-reason","thinking":true},{"text":"claude-answer"},{"function_call":{"id":"claude-call","name":"claude_lookup","args":{"q":"c"}}}],"usageMetadata":{"promptTokenCount":2,"candidatesTokenCount":3},"finishReason":"STOP"}}',
     },
     {
@@ -151,7 +151,7 @@ describe('Antigravity LLM adapter', () => {
           toolConfig?: { functionCallingConfig?: { mode?: string } }
         }
       }
-      expect(payload.model).toBe('claude-opus-4-6-thinking')
+      expect(payload.model).toBe('claude-opus-5-5-low')
       expect(payload.request.systemInstruction?.parts?.[0]?.text).toBe(system)
       expect(payload.request.systemInstruction?.parts?.some(part => part.text?.includes(tail) === true)).toBe(true)
       expect(payload.request.systemInstruction?.parts?.some(part => part.text?.includes('CRITICAL TOOL USAGE INSTRUCTIONS') === true)).toBe(true)
@@ -167,7 +167,7 @@ describe('Antigravity LLM adapter', () => {
     })
 
     await expect(collectThroughRuntime(adapter, options({
-      model: 'antigravity-claude-opus-4-6-thinking',
+      model: 'antigravity-claude-opus-5-5',
       system,
       tools: [{ name: 'lookup', description: 'Lookup', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } }],
     }))).resolves.toContainEqual(expect.objectContaining({
@@ -179,7 +179,7 @@ describe('Antigravity LLM adapter', () => {
   })
 
   it('replays Claude tool calls and results with matching ids while dropping unsigned reasoning', async () => {
-    const model = 'antigravity-claude-opus-4-6-thinking'
+    const model = 'antigravity-claude-opus-5-5'
     const bashCallId = 'toolu_vrtx_bash'
     const globCallId = 'toolu_vrtx_glob'
     const assistant = {
@@ -284,7 +284,7 @@ describe('Antigravity LLM adapter', () => {
 
   it('repairs a truncated historical tool-call argument object and replays it', async () => {
     const toolCallId = 'call_repairable'
-    const model = 'antigravity-gemini-3.7-flash'
+    const model = 'antigravity-gemini-3.8-flash'
     const assistant = {
       id: 'assistant-repairable',
       role: 'assistant',
@@ -318,7 +318,7 @@ describe('Antigravity LLM adapter', () => {
 
   it('drops an unrepairable historical tool-call fragment instead of locking the session', async () => {
     const toolCallId = 'call_truncated'
-    const model = 'antigravity-gemini-3.7-flash'
+    const model = 'antigravity-gemini-3.8-flash'
     const assistant = {
       id: 'assistant-truncated',
       role: 'assistant',
@@ -379,7 +379,7 @@ describe('Antigravity LLM adapter', () => {
       transport: { request: vi.fn(async () => new Response(body, { status: 400, headers: { 'content-type': 'text/event-stream' } })) },
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: {
@@ -411,7 +411,7 @@ describe('Antigravity LLM adapter', () => {
       transport: { request: vi.fn(async () => new Response(body, { status: 400 })) },
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: { kind: 'error', failure: { code: CONTEXT_WINDOW_EXCEEDED_CODE, status: 400 } },
@@ -436,7 +436,7 @@ describe('Antigravity LLM adapter', () => {
       transport: { request: vi.fn(async () => new Response(body, { status: 400 })) },
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: { kind: 'error', failure: { code: CONTEXT_WINDOW_EXCEEDED_CODE, status: 400 } },
@@ -458,7 +458,7 @@ describe('Antigravity LLM adapter', () => {
       transport: { request: vi.fn(async () => new Response(`data: ${event}\n\n`)) },
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: { kind: 'error', failure: { code: CONTEXT_WINDOW_EXCEEDED_CODE, status: 400 } },
@@ -480,7 +480,7 @@ describe('Antigravity LLM adapter', () => {
       transport: { request: vi.fn(async () => new Response(body, { status: 400 })) },
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: { kind: 'error', failure: { code: 'PROTOCOL_DRIFT', status: 400 } },
@@ -494,7 +494,7 @@ describe('Antigravity LLM adapter', () => {
       transport: { request: vi.fn(async () => new Response(body, { status: 400 })) },
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: { kind: 'error', failure: { code: 'PROTOCOL_DRIFT', status: 400 } },
@@ -514,7 +514,7 @@ describe('Antigravity LLM adapter', () => {
         auth: { credential: vi.fn(async () => credential('opaque-test-value')) },
         transport: { request: vi.fn(async () => new Response(body, { status: 400 })) },
       })
-      const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+      const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
       expect(chunks.at(-1)).toMatchObject({
         type: 'finish',
         reason: { kind: 'error', failure: { code: 'PROTOCOL_DRIFT', status: 400 } },
@@ -539,7 +539,7 @@ describe('Antigravity LLM adapter', () => {
         ...('maxResponseBytes' in fixture ? { maxResponseBytes: fixture.maxResponseBytes } : {}),
         ...('maxFrameBytes' in fixture ? { maxFrameBytes: fixture.maxFrameBytes } : {}),
       })
-      const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+      const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
       expect(chunks.at(-1)).toMatchObject({
         type: 'finish',
         reason: { kind: 'error', failure: { code: 'PROTOCOL_DRIFT', status: 400 } },
@@ -573,7 +573,7 @@ describe('Antigravity LLM adapter', () => {
     })
 
     const chunks = await collectThroughRuntime(adapter, options({
-      model: 'antigravity-claude-opus-4-6-thinking',
+      model: 'antigravity-claude-opus-5-5',
       signal: controller.signal,
     }))
     expect(chunks.at(-1)).toMatchObject({
@@ -600,7 +600,7 @@ describe('Antigravity LLM adapter', () => {
       totalTimeoutMs: fixture.totalTimeoutMs,
     })
 
-    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-4-6-thinking' }))
+    const chunks = await collectThroughRuntime(adapter, options({ model: 'antigravity-claude-opus-5-5' }))
     expect(chunks.at(-1)).toMatchObject({
       type: 'finish',
       reason: { kind: 'error', failure: { code: 'PROTOCOL_DRIFT', status: 400 } },
@@ -712,7 +712,7 @@ describe('Antigravity LLM adapter', () => {
     const transport = {
       request: vi.fn(async (_input: PrivateTransportRequest) => new Response(JSON.stringify({
         models: {
-          'gemini-3.7-flash-medium': { displayName: 'Gemini live' },
+          'gemini-3.8-flash-medium': { displayName: 'Gemini live' },
           'provider-unknown-model': { displayName: 'Unknown' },
         },
       }))),
@@ -721,7 +721,7 @@ describe('Antigravity LLM adapter', () => {
 
     const models = await adapter.listModels(ANTIGRAVITY_PROVIDER)
 
-    expect(models.map(model => model.id)).toEqual(['antigravity-gemini-3.7-flash'])
+    expect(models.map(model => model.id)).toEqual(['antigravity-gemini-3.8-flash'])
     expect(transport.request).toHaveBeenCalledOnce()
     expect(transport.request.mock.calls[0]?.[0]).toMatchObject({
       url: ANTIGRAVITY_AVAILABLE_MODELS_ENDPOINT,
@@ -738,7 +738,7 @@ describe('Antigravity LLM adapter', () => {
     expect(live.catalogSnapshot()).toMatchObject({ state: 'snapshot' })
     const liveView = await live.modelCatalog()
     expect(liveView.state).toBe('live-available')
-    expect(liveView.models.find(model => model.id === 'antigravity-gemini-3.7-flash')?.state).toBe('live-available')
+    expect(liveView.models.find(model => model.id === 'antigravity-gemini-3.8-flash')?.state).toBe('live-available')
     expect(liveView.models.some(model => model.state === 'unavailable')).toBe(true)
 
     const rateLimited = new AntigravityAdapter({
@@ -758,9 +758,9 @@ describe('Antigravity LLM adapter', () => {
     const transport = { request: vi.fn(async () => new Response(JSON.stringify({ models: {} }))) }
     const adapter = new AntigravityAdapter({ auth: { credential: vi.fn(async () => credential('access')) }, transport })
 
-    await expect(adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-3.7-flash')).resolves.toMatchObject({
+    await expect(adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-3.8-flash')).resolves.toMatchObject({
       provider: ANTIGRAVITY_PROVIDER,
-      id: 'antigravity-gemini-3.7-flash',
+      id: 'antigravity-gemini-3.8-flash',
     })
     expect(transport.request).not.toHaveBeenCalled()
   })
@@ -928,7 +928,7 @@ describe('Antigravity LLM adapter', () => {
       {
         id: 'assistant-1',
         role: 'assistant',
-        source: { kind: 'model', provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.7-flash' },
+        source: { kind: 'model', provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.8-flash' },
         content: [{ type: 'tool-call', id: toolCallId, name: 'lookup_weather', arguments: '{"city":"Paris"}' }],
       } as unknown as Message,
       {
@@ -1002,5 +1002,104 @@ describe('Antigravity LLM adapter', () => {
     expect(reasoningEnd).toMatchObject({ block: { type: 'reasoning', text: 'thinking...' } })
     const toolCallEnd = chunks.find(chunk => chunk.type === 'block-end' && 'block' in chunk && chunk.block.type === 'tool-call')
     expect(toolCallEnd).toBeDefined()
+  })
+})
+
+describe('Gemini 4 family', () => {
+  const okStream = (): Response => new Response(
+    'data: {"response":{"parts":[{"text":"ok"}],"finishReason":"STOP"}}' + String.fromCharCode(10, 10),
+  )
+  const requestOf = (request: ReturnType<typeof vi.fn>): Record<string, any> => JSON.parse(String(request.mock.calls[0]?.[0].body))
+
+  it('advertises each family captured effort tiers and default', async () => {
+    const adapter = new AntigravityAdapter({
+      auth: { credential: vi.fn(async () => credential('access')) },
+      transport: { request: vi.fn(async () => new Response('data: [DONE]' + String.fromCharCode(10, 10))) },
+    })
+
+    const argon = await adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-4-argon')
+    expect(argon.reasoning?.defaultEffort).toBe('medium')
+    expect(argon.reasoning?.efforts?.map(effort => String(effort.id))).toEqual(['low', 'medium', 'high'])
+
+    const carbon = await adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-4-carbon')
+    expect(carbon.reasoning?.defaultEffort).toBe('medium')
+    expect(carbon.reasoning?.efforts?.map(effort => String(effort.id))).toEqual(['low', 'medium', 'high'])
+
+    // Hydrogen opens at High and publishes the extra XHigh tier.
+    const hydrogen = await adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-4-hydrogen')
+    expect(hydrogen.reasoning?.defaultEffort).toBe('high')
+    expect(hydrogen.reasoning?.efforts?.map(effort => String(effort.id))).toEqual(['low', 'medium', 'high', 'xhigh'])
+  })
+
+  it('routes Argon to its medium wire route with the 65536 ceiling', async () => {
+    const request = vi.fn(async (_input: PrivateTransportRequest) => okStream())
+    const adapter = new AntigravityAdapter({
+      auth: { credential: vi.fn(async () => credential('access')) },
+      transport: { request },
+    })
+    await collectThroughRuntime(adapter, options({ model: 'antigravity-gemini-4-argon' }))
+    const body = requestOf(request)
+    expect(body).toMatchObject({ model: 'gemini-4-argon-medium', request: { generationConfig: { maxOutputTokens: 65536 } } })
+    expect(body.request.generationConfig).not.toHaveProperty('thinkingConfig')
+  })
+
+  it('routes Carbon to its medium wire route with the 262144 ceiling', async () => {
+    const request = vi.fn(async (_input: PrivateTransportRequest) => okStream())
+    const adapter = new AntigravityAdapter({
+      auth: { credential: vi.fn(async () => credential('access')) },
+      transport: { request },
+    })
+    await collectThroughRuntime(adapter, options({ model: 'antigravity-gemini-4-carbon' }))
+    const body = requestOf(request)
+    expect(body).toMatchObject({ model: 'gemini-4-carbon-medium', request: { generationConfig: { maxOutputTokens: 262144 } } })
+    expect(body.request.generationConfig).not.toHaveProperty('thinkingConfig')
+  })
+
+  it('routes Hydrogen to High by default and accepts the xhigh tier', async () => {
+    const request = vi.fn(async (_input: PrivateTransportRequest) => okStream())
+    const adapter = new AntigravityAdapter({
+      auth: { credential: vi.fn(async () => credential('access')) },
+      transport: { request },
+    })
+    await collectThroughRuntime(adapter, options({ model: 'antigravity-gemini-4-hydrogen' }))
+    const body = requestOf(request)
+    expect(body).toMatchObject({ model: 'gemini-4-hydrogen-high', request: { generationConfig: { maxOutputTokens: 262144 } } })
+    expect(body.request.generationConfig).not.toHaveProperty('thinkingConfig')
+
+    request.mockClear()
+    await collectThroughRuntime(adapter, options({
+      model: 'antigravity-gemini-4-hydrogen',
+      reasoningEffort: ReasoningEffortId('xhigh'),
+    }))
+    const xhighBody = requestOf(request)
+    expect(xhighBody.model).toBe('gemini-4-hydrogen-xhigh')
+    expect(xhighBody.request.generationConfig).not.toHaveProperty('thinkingConfig')
+  })
+
+  it('exposes every Gemini 4 family through the live catalog intersection', async () => {
+    const ctx = new Context()
+    try {
+      const runtime = new LlmRuntime(ctx)
+      runtime.registerAdapter([ANTIGRAVITY_PROVIDER], new AntigravityAdapter({
+        auth: { credential: vi.fn(async () => credential('access')) },
+        transport: {
+          request: vi.fn(async () => new Response(JSON.stringify({
+            models: {
+              'gemini-4-argon-tiered': { displayName: 'Gemini 4 Argon' },
+              'gemini-4-carbon-tiered': { displayName: 'Gemini 4 Carbon' },
+              'gemini-4-hydrogen-tiered': { displayName: 'Gemini 4 Hydrogen' },
+            },
+          }))),
+        },
+      }))
+      const ids = await runtime.listModels(ANTIGRAVITY_PROVIDER).then(models => models.map(model => model.id))
+      expect(ids).toEqual(expect.arrayContaining([
+        'antigravity-gemini-4-argon',
+        'antigravity-gemini-4-carbon',
+        'antigravity-gemini-4-hydrogen',
+      ]))
+    } finally {
+      await ctx.fiber.dispose()
+    }
   })
 })

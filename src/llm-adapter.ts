@@ -79,6 +79,45 @@ const MAX_CAPACITY_RETRIES = 2
 const CAPACITY_RETRY_BASE_DELAY_MS = 1500
 const CAPACITY_RETRY_MAX_DELAY_MS = 8000
 
+// Gemini 4 routes name their effort tier in the wire model, so the local surface
+// only needs the family, its tiers, and the captured output ceiling. The core
+// registry owns everything else (placeholders, quota pools, retirement).
+type Gemini4Family = 'argon' | 'carbon' | 'hydrogen'
+const GEMINI4_MODEL_REGEX = /^(?:antigravity-)?gemini-4-(argon|carbon|hydrogen)(?:-(?:low|medium|high|xhigh))?$/iu
+const CLAUDE55_MODEL_REGEX = /^(?:antigravity-)?claude-(opus|sonnet)-5-5(?:-(?:low|medium|high))?$/iu
+const CLAUDE55_FAMILY_ONLY_REGEX = /^(?:antigravity-)?claude-(?:opus|sonnet)-5-5$/iu
+const GEMINI4_FAMILY_ONLY_REGEX = /^(?:antigravity-)?gemini-4-(?:argon|carbon|hydrogen)$/iu
+// The live catalog may name a family directly or through a suffix such as
+// `-tiered`, so discovery matches the family prefix and expands its tiers.
+const GEMINI4_LIVE_REGEX = /^(?:antigravity-)?gemini-4-(argon|carbon|hydrogen)(?:-|$)/iu
+const GEMINI4_TIERS: Record<Gemini4Family, readonly string[]> = {
+  argon: ['low', 'medium', 'high'],
+  carbon: ['low', 'medium', 'high'],
+  hydrogen: ['low', 'medium', 'high', 'xhigh'],
+}
+const GEMINI4_DEFAULT_TIER: Record<Gemini4Family, string> = { argon: 'medium', carbon: 'medium', hydrogen: 'high' }
+const GEMINI4_EFFORT_NAMES: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'XHigh' }
+const GEMINI4_OUTPUT_TOKENS: Record<Gemini4Family, number> = { argon: 65536, carbon: 262144, hydrogen: 262144 }
+
+function gemini4Family(model: string): Gemini4Family | undefined {
+  const match = GEMINI4_MODEL_REGEX.exec(model)
+  return match === null ? undefined : match[1]?.toLowerCase() as Gemini4Family
+}
+
+/**
+ * Keep the requested effort inside the tiers the client actually publishes.
+ * XHigh belongs to Hydrogen alone, and the four-tier vocabulary must not leak
+ * into the shared Gemini/Claude routes, where it would produce an unknown wire
+ * suffix instead of a tier.
+ */
+function acceptedReasoningEffort(model: string, effort: string | undefined): string | undefined {
+  if (effort === undefined) return undefined
+  const family = gemini4Family(model)
+  if (family !== undefined) return GEMINI4_TIERS[family].includes(effort) ? effort : undefined
+  if (CLAUDE55_MODEL_REGEX.test(model)) return ['low', 'medium', 'high'].includes(effort) ? effort : undefined
+  return effort === 'xhigh' ? undefined : effort
+}
+
 export interface AntigravityAuthCredentialSource {
   credential(signal?: AbortSignal, options?: { readonly forceRefresh?: boolean }): Promise<HostCredential | undefined>
 }
@@ -128,7 +167,9 @@ export interface AntigravityRequestMetadata {
 /** Adapter that owns exactly one provider route and no fallback route. */
 export class AntigravityAdapter extends LlmAdapter {
   private readonly transport: PrivateTransport
-  private readonly sessions = new AgyRequestSessionStore('dsh-antigravity-auth')
+  // The store is per-adapter, so a namespace is no longer part of its options;
+  // 3.1 rotates the execution id from the session state during metadata build.
+  private readonly sessions = new AgyRequestSessionStore()
   private readonly options: Required<Pick<AntigravityAdapterOptions, 'idleTimeoutMs' | 'totalTimeoutMs' | 'maxResponseBytes' | 'maxFrameBytes'>> & {
     readonly responseHeaderTimeoutMs: number
   }
@@ -330,7 +371,6 @@ export class AntigravityAdapter extends LlmAdapter {
       }
       try {
         yield* this.streamResponse(response, options, hasEmitted)
-        this.sessions.completeExecution(sessionKey)
         return
       } catch (error) {
         const privateError = error instanceof PrivateTransportError ? error : undefined
@@ -568,6 +608,23 @@ function cleanModelDisplayName(name: string): string {
 
 function getModelReasoningEfforts(modelId: string): { efforts: readonly { id: ReturnType<typeof ReasoningEffortId>; name: string }[]; defaultEffort: ReturnType<typeof ReasoningEffortId> } | undefined {
   const lower = modelId.toLowerCase()
+  // Every Gemini 4 family carries its effort in the wire route
+  // (`gemini-4-<family>-<tier>`) rather than in a thinking budget. Captured
+  // defaults differ: Carbon and Argon open at Medium, Hydrogen at High, and only
+  // Hydrogen publishes the extra XHigh tier.
+  const family = gemini4Family(lower)
+  if (family !== undefined) {
+    return {
+      efforts: GEMINI4_TIERS[family].map(tier => ({ id: ReasoningEffortId(tier), name: GEMINI4_EFFORT_NAMES[tier] ?? tier })),
+      defaultEffort: ReasoningEffortId(GEMINI4_DEFAULT_TIER[family]),
+    }
+  }
+  if (CLAUDE55_MODEL_REGEX.test(lower)) {
+    return {
+      efforts: ['low', 'medium', 'high'].map(tier => ({ id: ReasoningEffortId(tier), name: GEMINI4_EFFORT_NAMES[tier] ?? tier })),
+      defaultEffort: ReasoningEffortId('low'),
+    }
+  }
   if (lower.includes('flash') && !lower.includes('image')) {
     return {
       efforts: [
@@ -616,6 +673,34 @@ function cloneCatalogView(value: AntigravityModelCatalogView): AntigravityModelC
   }
 }
 
+function addLiveModelIds(live: Set<string>, id: string, aliases: Readonly<Record<string, string>>): void {
+  const cleanId = cleanModelId(id)
+  live.add(canonicalWireModel(cleanId, aliases))
+  live.add(cleanId)
+  if (cleanId === 'gemini-3-flash' || cleanId === 'gemini-3-flash-agent' || cleanId === 'gemini-3.7-flash-tiered' || cleanId.startsWith('gemini-3-flash') || cleanId.startsWith('gemini-3.7-flash')) {
+    live.add('gemini-3.7-flash')
+    live.add('gemini-3.7-flash-medium')
+    live.add('gemini-3.7-flash-low')
+    live.add('gemini-3.7-flash-high')
+  }
+  if (cleanId === 'gemini-3.8-flash-tiered' || cleanId.startsWith('gemini-3.8-flash')) {
+    live.add('gemini-3.8-flash')
+    live.add('gemini-3.8-flash-medium')
+    live.add('gemini-3.8-flash-low')
+    live.add('gemini-3.8-flash-high')
+  }
+  const liveMatch = GEMINI4_LIVE_REGEX.exec(cleanId)
+  const liveFamily = liveMatch === null ? undefined : liveMatch[1]?.toLowerCase() as Gemini4Family
+  if (liveFamily !== undefined) {
+    live.add(`gemini-4-${liveFamily}`)
+    for (const tier of GEMINI4_TIERS[liveFamily]) live.add(`gemini-4-${liveFamily}-${tier}`)
+  }
+  const claude = CLAUDE55_MODEL_REGEX.exec(cleanId)
+  if (claude !== null) {
+    for (const tier of ['low', 'medium', 'high']) live.add(`claude-${claude[1]!.toLowerCase()}-5-5-${tier}`)
+  }
+}
+
 function parseLiveModelIds(
   value: unknown,
   definitions: ReturnType<typeof getPublicModelDefinitions>,
@@ -628,27 +713,10 @@ function parseLiveModelIds(
   const live = new Set<string>()
   for (const [id, rawEntry] of entries) {
     if (!safeModelId(id) || !isRecord(rawEntry)) throw new LlmError('The Antigravity live model catalog did not match the audited schema', 'PROTOCOL_DRIFT')
-    const cleanId = cleanModelId(id)
-    live.add(canonicalWireModel(cleanId, aliases))
-    live.add(cleanId)
-    live.add(id)
-    if (cleanId === 'gemini-3-flash' || cleanId === 'gemini-3-flash-agent' || cleanId === 'gemini-3.7-flash-tiered' || cleanId.startsWith('gemini-3-flash') || cleanId.startsWith('gemini-3.7-flash')) {
-      live.add('gemini-3.7-flash')
-      live.add('gemini-3.7-flash-medium')
-      live.add('gemini-3.7-flash-low')
-      live.add('gemini-3.7-flash-high')
-    }
-    if (cleanId === 'gemini-3.8-flash-tiered' || cleanId.startsWith('gemini-3.8-flash')) {
-      live.add('gemini-3.8-flash')
-      live.add('gemini-3.8-flash-medium')
-      live.add('gemini-3.8-flash-low')
-      live.add('gemini-3.8-flash-high')
-    }
+    addLiveModelIds(live, id, aliases)
     if (rawEntry.modelName !== undefined && typeof rawEntry.modelName === 'string') {
       if (!safeModelId(rawEntry.modelName)) throw new LlmError('The Antigravity live model catalog did not match the audited schema', 'PROTOCOL_DRIFT')
-      const cleanName = cleanModelId(rawEntry.modelName)
-      live.add(canonicalWireModel(cleanName, aliases))
-      live.add(cleanName)
+      addLiveModelIds(live, rawEntry.modelName, aliases)
     }
     if (rawEntry.displayName !== undefined && (typeof rawEntry.displayName !== 'string' || rawEntry.displayName.length > 512 || containsControl(rawEntry.displayName))) {
       throw new LlmError('The Antigravity live model catalog did not match the audited schema', 'PROTOCOL_DRIFT')
@@ -843,6 +911,11 @@ function buildPayloadFromContents(
 ): Record<string, unknown> {
   const wireModel = resolveWireModel(options.model, options.reasoningEffort)
   const usesCapturedGemini38ThinkingBudget = /^gemini-3\.8-flash-(?:low|medium|high)$/u.test(wireModel)
+  // Gemini 4 routes already name their tier, so the request must not also carry
+  // an explicit thinking level or budget; the wire model is the setting. Argon
+  // caps its output lower than the Carbon/Hydrogen pair, so the ceiling follows
+  // the resolved family rather than a single constant.
+  const wireFamily = gemini4Family(wireModel)
   const requestContents = groupClaudeFunctionResponses(contents, options.model)
   const request: Record<string, unknown> = { contents: requestContents }
   // V3 AgentLoop stores instructions in system messages. One-shot callers may
@@ -857,16 +930,17 @@ function buildPayloadFromContents(
   const generationConfig: Record<string, unknown> = {}
   if (options.maxTokens !== undefined) generationConfig.maxOutputTokens = boundedInteger(options.maxTokens, 1, 1_000_000, 'maxTokens')
   else if (usesCapturedGemini38ThinkingBudget) generationConfig.maxOutputTokens = 65536
+  else if (wireFamily !== undefined) generationConfig.maxOutputTokens = GEMINI4_OUTPUT_TOKENS[wireFamily]
   if (options.temperature !== undefined) generationConfig.temperature = boundedNumber(options.temperature, -100, 100, 'temperature')
   if (options.stop !== undefined) generationConfig.stopSequences = options.stop.slice(0, 16).map(item => item.slice(0, 256))
-  if (options.reasoningEffort !== undefined) generationConfig.thinkingConfig = { thinkingLevel: String(options.reasoningEffort) }
+  if (options.reasoningEffort !== undefined && wireFamily === undefined) generationConfig.thinkingConfig = { thinkingLevel: String(options.reasoningEffort) }
   if (Object.keys(generationConfig).length > 0) request.generationConfig = generationConfig
   if (options.tools !== undefined && options.tools.length > 0) {
     const declarations = buildFunctionDeclarations(options.tools)
     if (declarations.length > 0) request.tools = [{ functionDeclarations: declarations }]
   }
-  const resolved = resolveModelWithTier(usesCapturedGemini38ThinkingBudget ? wireModel : options.model, { cli_first: false })
-  const requestedEffort = normalizeReasoningEffort(options.reasoningEffort)
+  const resolved = resolveModelWithTier(usesCapturedGemini38ThinkingBudget || wireFamily !== undefined || CLAUDE55_MODEL_REGEX.test(wireModel) ? wireModel : options.model)
+  const requestedEffort = acceptedReasoningEffort(options.model, normalizeReasoningEffort(options.reasoningEffort))
   const thinkingLevel = requestedEffort ?? resolved.thinkingLevel
   if (wireModel.toLowerCase().includes('claude')) {
     applyClaudeToolHardening(request)
@@ -879,9 +953,9 @@ function buildPayloadFromContents(
   } else {
     applyGeminiTransforms(request, {
       model: wireModel,
-      ...(thinkingLevel === undefined || usesCapturedGemini38ThinkingBudget ? {} : { tierThinkingLevel: thinkingLevel as 'low' | 'medium' | 'high' }),
+      ...(thinkingLevel === undefined || usesCapturedGemini38ThinkingBudget || wireFamily !== undefined ? {} : { tierThinkingLevel: thinkingLevel as 'low' | 'medium' | 'high' }),
       ...(resolved.thinkingBudget === undefined ? {} : { tierThinkingBudget: resolved.thinkingBudget }),
-      ...(options.reasoningEffort === undefined && resolved.thinkingBudget === undefined ? {} : { normalizedThinking: { includeThoughts: true, ...(resolved.thinkingBudget === undefined ? {} : { thinkingBudget: resolved.thinkingBudget }) } }),
+      ...(wireFamily !== undefined || (options.reasoningEffort === undefined && resolved.thinkingBudget === undefined) ? {} : { normalizedThinking: { includeThoughts: true, ...(resolved.thinkingBudget === undefined ? {} : { thinkingBudget: resolved.thinkingBudget }) } }),
     })
     if (usesCapturedGemini38ThinkingBudget) {
       const transformedConfig = request.generationConfig
@@ -1122,18 +1196,24 @@ function requireToolCallId(value: unknown): string {
 function normalizeReasoningEffort(value: GenerateOptions['reasoningEffort']): string | undefined {
   if (value === undefined) return undefined
   const normalized = String(value).toLowerCase()
-  return ['minimal', 'low', 'medium', 'high'].includes(normalized) ? normalized : undefined
+  return ['minimal', 'low', 'medium', 'high', 'xhigh'].includes(normalized) ? normalized : undefined
 }
 
 function resolveWireModel(model: string, reasoningEffort?: GenerateOptions['reasoningEffort']): string {
   if (model === 'antigravity-gemini-3.7-flash' || model === 'gemini-3.7-flash') {
     return 'gemini-3-flash'
   }
-  const effort = normalizeReasoningEffort(reasoningEffort)
-  const routeModel = effort !== undefined && (model === 'antigravity-gemini-3.8-flash' || model === 'gemini-3.8-flash')
+  const effort = acceptedReasoningEffort(model, normalizeReasoningEffort(reasoningEffort))
+  // Gemini 4 families encode the tier in the route itself, the same way the
+  // captured Gemini 3.8 routes do, so the requested effort becomes a suffix.
+  const usesTierSuffix = GEMINI4_FAMILY_ONLY_REGEX.test(model)
+    || CLAUDE55_FAMILY_ONLY_REGEX.test(model)
+    || model === 'antigravity-gemini-3.8-flash'
+    || model === 'gemini-3.8-flash'
+  const routeModel = effort !== undefined && usesTierSuffix
     ? `${model}-${effort}`
     : model
-  const resolved = resolveModelWithTier(routeModel, { cli_first: false })
+  const resolved = resolveModelWithTier(routeModel)
   if (resolved.actualModel.startsWith('gemini-3.7-flash')) {
     return 'gemini-3-flash'
   }

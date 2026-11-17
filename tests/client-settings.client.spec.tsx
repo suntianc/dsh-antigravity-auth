@@ -155,7 +155,7 @@ describe('Antigravity bootstrap settings', () => {
     await waitFor(() => expect(rpc.logout).toHaveBeenCalledOnce())
   })
 
-  it('shows quota dashboard with groups and windows', async () => {
+  it.each([en, zh])('shows the separate Argon quota with shared Gemini windows', async copy => {
     const rpc = rpcFixture(
       { phase: 'success', configured: true, projectAvailable: true },
       true,
@@ -167,6 +167,7 @@ describe('Antigravity bootstrap settings', () => {
       value: {
         state: 'available',
         groups: [
+          { group: 'gemini-argon', modelCount: 1, windows: [{ window: 'weekly', remainingFraction: 0.94, resetTime: '2030-01-07T00:00:00.000Z' }] },
           {
             group: 'gemini',
             modelCount: 2,
@@ -179,10 +180,12 @@ describe('Antigravity bootstrap settings', () => {
       },
     })
 
-    render(<AntigravityAuthSettings rpc={rpc} t={key => en[key]} subscribe={() => () => {}} />)
+    render(<AntigravityAuthSettings rpc={rpc} t={key => copy[key]} subscribe={() => () => {}} />)
 
-    expect(await screen.findByRole('heading', { name: en.authCardTitle })).toBeTruthy()
-    expect(await screen.findByText('GEMINI MODELS')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: copy.authCardTitle })).toBeTruthy()
+    expect(await screen.findByText(copy.geminiGroupTitle)).toBeTruthy()
+    expect(screen.getByText(copy.argonGroupTitle)).toBeTruthy()
+    expect(screen.getByText('94.00%')).toBeTruthy()
     expect(screen.getByText('85.00%')).toBeTruthy()
   })
 

@@ -13,7 +13,7 @@ const credential = {
   accessToken: 'offline-access', refreshToken: 'offline-refresh',
   expiresAt: Date.now() + 3_600_000, projectId: 'offline-project',
 }
-const models = ['antigravity-gemini-3.7-flash', 'antigravity-claude-opus-4-6-thinking']
+const models = ['antigravity-gemini-3.8-flash', 'antigravity-claude-opus-5-5']
 
 it('repairs the admitted system prompt on the next turn of a previously refused session', async () => {
   const { mountPromptCompatibility, BROWSER_SURFACE_SENTENCE } = await import('../src/prompt-compatibility.ts')
@@ -128,14 +128,14 @@ it.each([false, true])('records compatible assembly without user rewrites; docum
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin({ apply: (scope: Context) => mountPromptCompatibility(scope, provider => provider === ANTIGRAVITY_PROVIDER) })
     ctx.llm.registerAdapter([ANTIGRAVITY_PROVIDER], adapter)
-    if (reroute) ctx.on('agent/request', async (_context, next) => ({ ...await next(), model: 'antigravity-gemini-3.7-flash' }))
+    if (reroute) ctx.on('agent/request', async (_context, next) => ({ ...await next(), model: 'antigravity-gemini-4-carbon' }))
     const agent = await ctx.agentLoop.create(SessionId('prompt-compat-e2e'), { provider: ANTIGRAVITY_PROVIDER, model: 'antigravity-gemini-3.8-flash' })
     agent.followup(createUserMessage({ content: [{ type: 'text', text: `${HARNESS_IDENTITY_SENTENCE} ${BROWSER_SURFACE_SENTENCE}` }], source: { kind: 'user' } }))
     await agent.whenIdle()
     expect(requests).toHaveLength(1)
     const body = JSON.parse(requests[0]!)
     // Assembly precedes routing: a later reroute keeps the admitted prompt.
-    expect(body.model).toBe(reroute ? 'gemini-3-flash' : 'gemini-3.8-flash-medium')
+    expect(body.model).toBe(reroute ? 'gemini-4-carbon-medium' : 'gemini-3.8-flash-medium')
     expect(JSON.stringify(body.request.systemInstruction)).toContain('You are an AI coding assistant.')
     expect(JSON.stringify(body.request.systemInstruction)).not.toContain(HARNESS_IDENTITY_SENTENCE)
     expect(JSON.stringify(body.request.systemInstruction)).toContain('Preserve this instruction.')

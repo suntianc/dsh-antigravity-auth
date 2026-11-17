@@ -13,7 +13,7 @@ describe('issue #44 search model regression (offline fixtures only)', () => {
   })
 
   it.each([
-    ['antigravity-gemini-3.7-flash', 'gemini-3.7-flash-medium'],
+    ['antigravity-gemini-3.8-flash', 'gemini-3.8-flash-medium'],
     ['antigravity-gemini-3.8-flash', 'gemini-3.8-flash-medium'],
   ])('preserves explicit model %s', (model, actual) => {
     expect(buildGroundedSearchPayload('offline query', credential, model).model).toBe(actual)
@@ -28,7 +28,7 @@ describe('issue #44 search model regression (offline fixtures only)', () => {
   })
 
   it('reads a changed explicit model without replacing the provider', async () => {
-    let model = 'antigravity-gemini-3.7-flash'
+    let model = 'antigravity-gemini-3.8-flash'
     const request = vi.fn(async () => groundedResponse())
     const provider = new AntigravitySearchProvider({
       auth: { credential: async () => credential }, transport: { request },
@@ -38,7 +38,7 @@ describe('issue #44 search model regression (offline fixtures only)', () => {
     model = 'antigravity-gemini-3.8-flash'
     await provider.search({ query: 'offline query' })
     const calls = request.mock.calls as unknown as [{ body: string }][]
-    expect(calls.map(([sent]) => JSON.parse(sent.body).model)).toEqual(['gemini-3.7-flash-medium', 'gemini-3.8-flash-medium'])
+    expect(calls.map(([sent]) => JSON.parse(sent.body).model)).toEqual(['gemini-3.8-flash-medium', 'gemini-3.8-flash-medium'])
   })
 
   it.each([[400, 'ANTIGRAVITY_SEARCH_PROTOCOL_DRIFT'], [404, 'ANTIGRAVITY_SEARCH_PROTOCOL_DRIFT'], [500, 'ANTIGRAVITY_SEARCH_FAILED']] as const)('redacts HTTP %s without silently switching models', async (status, code) => {
