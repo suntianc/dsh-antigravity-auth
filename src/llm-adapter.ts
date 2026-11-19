@@ -82,22 +82,23 @@ const CAPACITY_RETRY_MAX_DELAY_MS = 8000
 // Gemini 4 routes name their effort tier in the wire model, so the local surface
 // only needs the family, its tiers, and the captured output ceiling. The core
 // registry owns everything else (placeholders, quota pools, retirement).
-type Gemini4Family = 'argon' | 'carbon' | 'hydrogen'
-const GEMINI4_MODEL_REGEX = /^(?:antigravity-)?gemini-4-(argon|carbon|hydrogen)(?:-(?:low|medium|high|xhigh))?$/iu
+type Gemini4Family = 'argon' | 'carbon' | 'hydrogen' | 'neon'
+const GEMINI4_MODEL_REGEX = /^(?:antigravity-)?gemini-4-(argon|carbon|hydrogen|neon)(?:-(?:low|medium|high|xhigh))?$/iu
 const CLAUDE55_MODEL_REGEX = /^(?:antigravity-)?claude-(opus|sonnet)-5-5(?:-(?:low|medium|high))?$/iu
 const CLAUDE55_FAMILY_ONLY_REGEX = /^(?:antigravity-)?claude-(?:opus|sonnet)-5-5$/iu
-const GEMINI4_FAMILY_ONLY_REGEX = /^(?:antigravity-)?gemini-4-(?:argon|carbon|hydrogen)$/iu
+const GEMINI4_FAMILY_ONLY_REGEX = /^(?:antigravity-)?gemini-4-(?:argon|carbon|hydrogen|neon)$/iu
 // The live catalog may name a family directly or through a suffix such as
 // `-tiered`, so discovery matches the family prefix and expands its tiers.
-const GEMINI4_LIVE_REGEX = /^(?:antigravity-)?gemini-4-(argon|carbon|hydrogen)(?:-|$)/iu
+const GEMINI4_LIVE_REGEX = /^(?:antigravity-)?gemini-4-(argon|carbon|hydrogen|neon)(?:-|$)/iu
 const GEMINI4_TIERS: Record<Gemini4Family, readonly string[]> = {
   argon: ['low', 'medium', 'high'],
   carbon: ['low', 'medium', 'high'],
   hydrogen: ['low', 'medium', 'high', 'xhigh'],
+  neon: ['low', 'medium', 'high', 'xhigh'],
 }
-const GEMINI4_DEFAULT_TIER: Record<Gemini4Family, string> = { argon: 'medium', carbon: 'medium', hydrogen: 'high' }
+const GEMINI4_DEFAULT_TIER: Record<Gemini4Family, string> = { argon: 'medium', carbon: 'medium', hydrogen: 'high', neon: 'high' }
 const GEMINI4_EFFORT_NAMES: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'XHigh' }
-const GEMINI4_OUTPUT_TOKENS: Record<Gemini4Family, number> = { argon: 65536, carbon: 262144, hydrogen: 262144 }
+const GEMINI4_OUTPUT_TOKENS: Record<Gemini4Family, number> = { argon: 65536, carbon: 262144, hydrogen: 262144, neon: 262144 }
 
 function gemini4Family(model: string): Gemini4Family | undefined {
   const match = GEMINI4_MODEL_REGEX.exec(model)
@@ -608,6 +609,8 @@ function cleanModelDisplayName(name: string): string {
 
 function getModelReasoningEfforts(modelId: string): { efforts: readonly { id: ReturnType<typeof ReasoningEffortId>; name: string }[]; defaultEffort: ReturnType<typeof ReasoningEffortId> } | undefined {
   const lower = modelId.toLowerCase()
+  // Orchestrator routes expose no selectable effort (else the generic 'pro' branch matches).
+  if (lower.includes('orchestrator')) return undefined
   // Every Gemini 4 family carries its effort in the wire route
   // (`gemini-4-<family>-<tier>`) rather than in a thinking budget. Captured
   // defaults differ: Carbon and Argon open at Medium, Hydrogen at High, and only
