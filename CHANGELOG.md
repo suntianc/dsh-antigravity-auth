@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Gemini 4 Neon (`gemini-4-neon-{low,medium,high,xhigh}`) and the two Orchestrator routes (`gemini-pro-orchestrator-neon`, `gemini-pro-orchestrator-g1-pro`) in the live-catalog filter and effort picker (Orchestrator exposes no effort).
+- `scripts/apply-core-models.mjs` + `scripts/core-models.patch`: idempotently register those routes in the installed `@cortexkit/antigravity-auth-core@3.1.2`, whose model registry is hardcoded (run after every install; `maxOutputTokens` for Neon/Orchestrator are estimates).
+
 ## [0.1.12] - 2026-11-17
 
 - Bump `@cortexkit/antigravity-auth-core` to `3.1.2`, bringing the Gemini 4 Argon, Carbon and Hydrogen routes and the Claude Opus/Sonnet 5.5 routes into the public catalog. Each Gemini 4 family advertises its captured effort tiers and resolves to `gemini-4-<family>-<tier>`; the wire route already names its effort, so no explicit `thinkingConfig` is sent.
