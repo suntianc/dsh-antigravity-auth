@@ -609,12 +609,8 @@ function cleanModelDisplayName(name: string): string {
 
 function getModelReasoningEfforts(modelId: string): { efforts: readonly { id: ReturnType<typeof ReasoningEffortId>; name: string }[]; defaultEffort: ReturnType<typeof ReasoningEffortId> } | undefined {
   const lower = modelId.toLowerCase()
-  // Orchestrator routes expose no selectable effort (else the generic 'pro' branch matches).
-  if (lower.includes('orchestrator')) return undefined
   // Every Gemini 4 family carries its effort in the wire route
-  // (`gemini-4-<family>-<tier>`) rather than in a thinking budget. Captured
-  // defaults differ: Carbon and Argon open at Medium, Hydrogen at High, and only
-  // Hydrogen publishes the extra XHigh tier.
+  // (`gemini-4-<family>-<tier>`) rather than in a thinking budget.
   const family = gemini4Family(lower)
   if (family !== undefined) {
     return {
@@ -916,7 +912,7 @@ function buildPayloadFromContents(
   const usesCapturedGemini38ThinkingBudget = /^gemini-3\.8-flash-(?:low|medium|high)$/u.test(wireModel)
   // Gemini 4 routes already name their tier, so the request must not also carry
   // an explicit thinking level or budget; the wire model is the setting. Argon
-  // caps its output lower than the Carbon/Hydrogen pair, so the ceiling follows
+  // caps its output lower than the other families, so the ceiling follows
   // the resolved family rather than a single constant.
   const wireFamily = gemini4Family(wireModel)
   const requestContents = groupClaudeFunctionResponses(contents, options.model)

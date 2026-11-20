@@ -2,10 +2,13 @@
 
 ## [Unreleased]
 
-### Added
+## [0.1.13] - 2026-11-19
 
-- Gemini 4 Neon (`gemini-4-neon-{low,medium,high,xhigh}`) and the two Orchestrator routes (`gemini-pro-orchestrator-neon`, `gemini-pro-orchestrator-g1-pro`) in the live-catalog filter and effort picker (Orchestrator exposes no effort).
-- `scripts/apply-core-models.mjs` + `scripts/core-models.patch`: idempotently register those routes in the installed `@cortexkit/antigravity-auth-core@3.1.2`, whose model registry is hardcoded (run after every install; `maxOutputTokens` for Neon/Orchestrator are estimates).
+- Add Gemini 4 Neon through the public registry in `@cortexkit/antigravity-auth-core@3.1.10`. The picker offers Low, Medium, High (default), and XHigh when the account's live catalog includes Neon. Thanks to @rrkyd for mapping the routes in #50.
+- Document proxy setup for OAuth login and Antigravity requests while keeping loopback traffic direct.
+
+- 通过 `@cortexkit/antigravity-auth-core@3.1.10` 的公开模型目录接入 Gemini 4 Neon。账号实时目录包含 Neon 时，选择器提供 Low、Medium、High（默认）及 XHigh。感谢 @rrkyd 在 #50 中整理路由。
+- 补充 OAuth 登录和 Antigravity 请求的代理配置，保留本地回环流量直连。
 
 ## [0.1.12] - 2026-11-17
 

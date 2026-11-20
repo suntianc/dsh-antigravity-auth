@@ -9,7 +9,7 @@
 
 > **非官方、实验性，仅供个人使用。** Google 不支持第三方 Antigravity 登录工具，账号可能被暂停或终止。登录前请阅读 [Google FAQ](https://antigravity.google/docs/faq/) 和 [Additional Terms](https://antigravity.google/terms)。私有接口可能随时变更或失效，请勿用于生产工作负载。
 
-**当前版本：**`0.1.12`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
+**当前版本：**`0.1.13`（`latest`）。历史变更请查看 [Releases](https://github.com/suntianc/dsh-antigravity-auth/releases) 和 [CHANGELOG](CHANGELOG.md)。
 
 [快速开始](#快速开始) · [使用各项能力](#使用各项能力) · [账号命令](#账号命令) · [常见问题](#常见问题) · [开发](#开发)
 
@@ -40,7 +40,7 @@
 
 ```sh
 dsh --version
-dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.12
+dsh plugin --profile web add --save-exact dsh-antigravity-auth@0.1.13
 dsh plugin --profile web list
 ```
 
@@ -62,7 +62,7 @@ dsh plugin --profile web list
 ## 使用各项能力
 
 - **模型：**在 DSH 模型选择器中选择 `google-antigravity`。当 `google` 尚未被其他提供方占用时，插件也会注册该别名。实时发现会筛选固定模型目录；临时发现失败时，选择器可能显示仅供参考的快照，并非已确认的账号可用列表。
-  0.1.12 使用 core `3.1.2`，新增 Gemini 4 Argon、Carbon、Hydrogen 及 Claude Opus/Sonnet 5.5。Argon、Carbon 提供 Low/Medium/High，默认 Medium；Hydrogen 另有 XHigh，默认 High；Claude 5.5 提供 Low/Medium/High，默认 Low。Argon 单独显示周额度，Carbon、Hydrogen 归入共享 Gemini 额度组。Gemini 3.5/3.6/3.7 Flash、Gemini 3.1 Pro 和 Claude 4.6 路由已从目录退役，已有会话请重新选择当前模型。新增模型已覆盖离线集成测试，本仓库尚未验证其真实生成调用。
+  0.1.13 通过 core `3.1.10` 新增 Gemini 4 Neon。账号实时目录包含 Neon 时，选择器提供 Low、Medium、High（默认）及 XHigh。Hydrogen 提供相同档位。Argon、Carbon 提供 Low/Medium/High，默认 Medium。Claude Opus/Sonnet 5.5 提供 Low/Medium/High，默认 Low。Argon 单独显示周额度，Carbon、Hydrogen 和 Neon 归入共享 Gemini 额度组。Gemini 3.5/3.6/3.7 Flash、Gemini 3.1 Pro 和 Claude 4.6 路由已从目录退役，已有会话请重新选择当前模型。Neon 的模型发现和请求路由已通过离线验证。
 - **搜索：**安装了多个搜索提供方时，在 Host 的**网页搜索**配置中选择 `antigravity`。仅打开 Antigravity 卡片开关不会替换 DSH 已选提供方。之后可通过内置 `web_search` 获取带来源链接的搜索结果。 默认搜索模型为 `antigravity-gemini-3.8-flash`，仍支持显式覆盖模型。
 - **图片：**让 DSH 生成图片，或编辑明确指定的会话图片（`image:<id>`）/工作区图片。`generate_image` 接收提示词、最多 **5 张参考图**、可选模型，每次可请求 **1–4 张图片**（`n`）；部分成功时可能少于请求数量，并返回警告。图片作为会话附件保存，可用 `list_images` 查找。目前没有独立的尺寸、宽高比、画质或透明背景参数。
 - **视频：**为 `analyze_video` 提供当前工作区内的 MP4 路径和问题。文件默认及最大上限为 **32 MiB**，不接受远程 URL、工作区外路径或符号链接。工具会直接将 MP4 提交给私有接口，不在本地抽帧。这是实验性 POC，不保证完整的视频、音频或时间轴理解。

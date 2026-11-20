@@ -38,8 +38,6 @@ it.each([
   ['gemini-4-carbon-tiered', 'antigravity-gemini-4-carbon'],
   ['gemini-4-hydrogen-tiered', 'antigravity-gemini-4-hydrogen'],
   ['gemini-4-neon-high', 'antigravity-gemini-4-neon'],
-  ['gemini-pro-orchestrator-neon', 'antigravity-gemini-pro-orchestrator-neon'],
-  ['gemini-pro-orchestrator-g1-pro', 'antigravity-gemini-pro-orchestrator-g1-pro'],
   ['claude-opus-5-5', 'antigravity-claude-opus-5-5'],
   ['claude-sonnet-5-5-high', 'antigravity-claude-sonnet-5-5'],
 ])('admits the new live modelName %s behind a provider catalog key', async (wire, model) => {

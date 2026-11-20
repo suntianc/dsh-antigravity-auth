@@ -1029,6 +1029,10 @@ describe('Gemini 4 family', () => {
     const hydrogen = await adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-4-hydrogen')
     expect(hydrogen.reasoning?.defaultEffort).toBe('high')
     expect(hydrogen.reasoning?.efforts?.map(effort => String(effort.id))).toEqual(['low', 'medium', 'high', 'xhigh'])
+
+    const neon = await adapter.resolveModel(ANTIGRAVITY_PROVIDER, 'antigravity-gemini-4-neon')
+    expect(neon.reasoning?.defaultEffort).toBe('high')
+    expect(neon.reasoning?.efforts?.map(effort => String(effort.id))).toEqual(['low', 'medium', 'high', 'xhigh'])
   })
 
   it('routes Argon to its medium wire route with the 65536 ceiling', async () => {
@@ -1076,6 +1080,32 @@ describe('Gemini 4 family', () => {
     expect(xhighBody.request.generationConfig).not.toHaveProperty('thinkingConfig')
   })
 
+  it('routes Neon to High by default and sends the matching wire metadata for every effort', async () => {
+    const request = vi.fn(async (_input: PrivateTransportRequest) => okStream())
+    const adapter = new AntigravityAdapter({
+      auth: { credential: vi.fn(async () => credential('access')) },
+      transport: { request },
+    })
+    const model = 'antigravity-gemini-4-neon'
+    await collectThroughRuntime(adapter, options({ model }))
+    expect(requestOf(request).model).toBe('gemini-4-neon-high')
+
+    const enums = { low: 'M534', medium: 'M533', high: 'M532', xhigh: 'M535' }
+    for (const [effort, modelEnum] of Object.entries(enums)) {
+      request.mockClear()
+      await collectThroughRuntime(adapter, options({ model, reasoningEffort: ReasoningEffortId(effort) }))
+      const body = requestOf(request)
+      expect(body).toMatchObject({
+        model: `gemini-4-neon-${effort}`,
+        request: {
+          generationConfig: { maxOutputTokens: 262144 },
+          labels: { model_enum: `MODEL_PLACEHOLDER_${modelEnum}` },
+        },
+      })
+      expect(body.request.generationConfig).not.toHaveProperty('thinkingConfig')
+    }
+  })
+
   it('exposes every Gemini 4 family through the live catalog intersection', async () => {
     const ctx = new Context()
     try {
@@ -1088,6 +1118,7 @@ describe('Gemini 4 family', () => {
               'gemini-4-argon-tiered': { displayName: 'Gemini 4 Argon' },
               'gemini-4-carbon-tiered': { displayName: 'Gemini 4 Carbon' },
               'gemini-4-hydrogen-tiered': { displayName: 'Gemini 4 Hydrogen' },
+              'gemini-4-neon-tiered': { displayName: 'Gemini 4 Neon' },
             },
           }))),
         },
@@ -1097,6 +1128,7 @@ describe('Gemini 4 family', () => {
         'antigravity-gemini-4-argon',
         'antigravity-gemini-4-carbon',
         'antigravity-gemini-4-hydrogen',
+        'antigravity-gemini-4-neon',
       ]))
     } finally {
       await ctx.fiber.dispose()
